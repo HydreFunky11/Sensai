@@ -1,0 +1,50 @@
+  Slide 1 : Titre
+  > "Bonjour à tous. Je vous présente aujourd'hui mon projet de fin d'études : SensIA. C’est une application qui utilise l’intelligence artificielle pour transformer la lecture de documents en langue étrangère en une expérience d'apprentissage fluide et
+  sans friction. Nous allons nous concentrer aujourd'hui sur le Bloc 1 : le cadrage stratégique et technique de cette solution."
+
+  Slide 2 : Sommaire
+  > "Pour cette présentation, nous allons suivre le cycle naturel d'un cadrage projet. Nous partirons de l'analyse du besoin utilisateur pour aller jusqu'à la modélisation technique de l'architecture, en passant par l'étude des risques et le chiffrage
+  budgétaire."
+
+  Slide 3 : A1.1 | Cartographie des acteurs (C1.1.1)
+  > "Pour bien cadrer SensIA, j'ai identifié trois acteurs clés. D'abord les utilisateurs finaux, des apprenants qui ont un besoin de rapidité. Ensuite, le pôle technique, où je gère l'orchestration des APIs. Et enfin, vous, le jury, qui représentez le
+  commanditaire garant de la rigueur méthodologique. Cette cartographie m'a permis de définir des priorités claires pour le développement."
+
+  Slide 4 : A1.1 | Analyse de la demande (C1.1.2)
+  > "Le constat de départ est simple : lire un manga ou un PDF en VO aujourd'hui est frustrant. On s'arrête toutes les 30 secondes pour chercher un mot. Mon objectif avec SensIA est de supprimer cette friction cognitive. Je ne propose pas juste un
+  traducteur, mais un outil qui automatise l'extraction et prépare la mémorisation grâce à la génération de fiches de révision."
+
+  Slide 5 : A1.2 | Analyse SWOT (C1.2.1)
+  > "Mon analyse SWOT montre que notre grande force est l'utilisation de modèles IA spécialisés comme Manga-OCR. Cependant, nous sommes dépendants d'APIs externes. Pour contrer cela, j'ai intégré une logique de Green IT : on ne traite que ce qui est
+  nécessaire pour économiser les ressources serveur et limiter les coûts."
+
+  Slide 6 : A1.2 | Audit et Faisabilité (C1.2.2)
+  > "Techniquement, le projet est viable. J'ai choisi Python pour sa richesse en bibliothèques d'IA et FastAPI pour sa gestion asynchrone des flux. L'audit confirme que même sur un serveur modeste, la solution reste performante grâce à l'optimisation des
+  échanges entre le front et le back."
+
+  Slide 7 : A1.2 | Référentiel des Risques (C1.2.3)
+  > "Tout projet d'IA comporte des risques. Le plus critique est la latence. Si l'utilisateur attend 10 secondes pour une traduction, il abandonne l'app. J'ai donc mis en place des indicateurs de performance et des mécanismes de 'fallback' : si un
+  service échoue, un autre prend le relais pour garantir la continuité du service."
+
+  Slide 8 : A1.3 | Stratégie de Veille (C1.3.1)
+  > "Pour rester à la pointe, ma veille s'est concentrée sur les modèles 'Open Weights' sur HuggingFace. C'est ce qui m'a permis de passer de modèles locaux lourds à l'inférence ultra-rapide de Groq. C'est un choix qui améliore à la fois l'expérience
+  utilisateur et l'empreinte carbone du projet."
+
+  Slide 9 : A1.3 | Choix de l'architecture (C1.3.2)
+  > "J'ai opté pour une architecture découplée. Le front en React est totalement indépendant du back en FastAPI. Pourquoi ? Pour la sécurité et l'évolutivité. Si demain un nouveau modèle d'OCR sort, je peux l'intégrer dans le backend sans toucher au
+  frontend."
+
+  Slide 10 : A1.4 | Charge de travail (C1.4.1)
+  > "J'ai estimé le projet à environ 21 jours-homme. Le plus gros morceau est le pipeline de traitement de l'IA. J'ai utilisé une approche Agile pour prioriser les fonctions 'cœur', comme l'OCR, tout en gardant du temps pour l'UX, car un outil
+  d'apprentissage doit avant tout être agréable à utiliser."
+
+  Slide 11 : A1.4 | Budget Prévisionnel (C1.4.2)
+  > "Financièrement, pour une V1, on arrive à un budget d'environ 8 800 €, en comptant mon temps de développement et les infrastructures. L'utilisation de technologies Open Source et d'APIs à l'usage permet de garder des coûts opérationnels très bas, ce
+  qui facilite le lancement du projet."
+
+  Slide 12 : A1.5 | Modélisation de l'Architecture (C1.5)
+  > "Voici le schéma de notre solution. Vous voyez ici comment les flux circulent de manière sécurisée via des tokens JWT. Chaque brique est interchangeable. C'est une architecture extensible qui peut supporter une montée en charge importante tout en
+  restant simple à maintenir."
+
+  Slide 13 : Remerciements
+  > "Merci de votre attention. SensIA n'est pas qu'un projet technique, c'est une solution concrète pour faciliter l'accès à la culture étrangère. Je suis maintenant prêt à répondre à vos questions sur cette phase de cadrage."

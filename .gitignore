@@ -1,0 +1,29 @@
+# Dépendances Node.js
+node_modules/
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environnement Python
+venv/
+manga-ocr/venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.env
+
+# Base de données & Uploads
+*.sqlite3
+sensai.db
+manga-ocr/sensai.db
+uploads/
+manga-ocr/uploads/
+
+# OS
+.DS_Store
+Thumbs.db
