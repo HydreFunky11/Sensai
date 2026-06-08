@@ -27,3 +27,11 @@ manga-ocr/uploads/
 # OS
 .DS_Store
 Thumbs.db
+
+# Fichiers de certification et annexes
+*.xlsx
+*.pdf
+présentation.txt
+projetFinDannee.json
+pfd
+test_apps_script.js
