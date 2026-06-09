@@ -2,9 +2,19 @@ from fastapi import APIRouter, File, UploadFile, Response
 from services.ocr_service import ocr_service
 from services.llm_service import llm_service
 from services.tts_service import tts_service
+from services.detection_service import detection_service
 from core.config import DEFAULT_VOICE
 
 router = APIRouter()
+
+@router.post("/detect")
+async def detect_bubbles(file: UploadFile = File(...)):
+    try:
+        image_data = await file.read()
+        boxes = detection_service.detect_bubbles(image_data)
+        return {"boxes": boxes}
+    except Exception as e:
+        return {"error": str(e)}
 
 @router.post("/analyze")
 async def analyze_manga(file: UploadFile = File(...), lang: str = "auto"):

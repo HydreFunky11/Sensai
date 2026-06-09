@@ -16,6 +16,22 @@ export async function analyzeImage(blob) {
   return response.json();
 }
 
+export async function detectBubbles(blob) {
+  const formData = new FormData();
+  formData.append("file", blob, "page.jpg");
+
+  const response = await fetch(`${BASE_URL}/detect`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Erreur lors de la détection");
+  }
+
+  return response.json();
+}
+
 export function getAudioUrl(text, voice = "ja-JP-NanamiNeural") {
   if (!text) return null;
   return `${BASE_URL}/tts?text=${encodeURIComponent(text)}&voice=${voice}`;
@@ -31,16 +47,16 @@ function getAuthHeaders() {
 
 export async function createFlashcard(cardData) {
   const response = await fetch(`${BASE_URL}/cards/`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
     body: JSON.stringify(cardData),
   });
 
   if (!response.ok) {
-    throw new Error('Erreur lors de la création de la carte');
+    throw new Error("Erreur lors de la création de la carte");
   }
   return response.json();
 }
@@ -49,43 +65,48 @@ export async function getDecks() {
   const response = await fetch(`${BASE_URL}/cards/decks`, {
     headers: getAuthHeaders(),
   });
-  if (!response.ok) throw new Error('Erreur lors de la récupération des dossiers');
+  if (!response.ok)
+    throw new Error("Erreur lors de la récupération des dossiers");
   return response.json();
 }
 
 export async function createDeck(title) {
   const response = await fetch(`${BASE_URL}/cards/decks`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
     body: JSON.stringify({ title }),
   });
-  if (!response.ok) throw new Error('Erreur lors de la création du dossier');
+  if (!response.ok) throw new Error("Erreur lors de la création du dossier");
   return response.json();
 }
 
 export async function getFlashcards(deckId = null) {
-  const url = deckId ? `${BASE_URL}/cards/?deck_id=${deckId}` : `${BASE_URL}/cards/`;
+  const url = deckId
+    ? `${BASE_URL}/cards/?deck_id=${deckId}`
+    : `${BASE_URL}/cards/`;
   const response = await fetch(url, {
     headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
-    throw new Error('Erreur lors de la récupération des cartes');
+    throw new Error("Erreur lors de la récupération des cartes");
   }
   return response.json();
 }
 
 export async function getDueFlashcards(deckId = null) {
-  const url = deckId ? `${BASE_URL}/cards/study?deck_id=${deckId}` : `${BASE_URL}/cards/study`;
+  const url = deckId
+    ? `${BASE_URL}/cards/study?deck_id=${deckId}`
+    : `${BASE_URL}/cards/study`;
   const response = await fetch(url, {
     headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
-    throw new Error('Erreur lors de la récupération des cartes à réviser');
+    throw new Error("Erreur lors de la récupération des cartes à réviser");
   }
   return response.json();
 }
@@ -108,14 +129,97 @@ export async function submitCardReview(cardId, quality) {
 
 // --- LIBRARY ---
 
-export async function getLibrary() {
-  const response = await fetch(`${BASE_URL}/library/`, {
+export async function getLibrary(folderId = null, sortBy = 'date', order = 'desc') {
+  let url = `${BASE_URL}/library/?sort_by=${sortBy}&order=${order}`;
+  if (folderId !== null) {
+    url = `${BASE_URL}/library/?folder_id=${folderId}&sort_by=${sortBy}&order=${order}`;
+  }
+  
+  const response = await fetch(url, {
     headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
     throw new Error("Erreur lors de la récupération de la bibliothèque");
   }
+  return response.json();
+}
+
+export async function getLibraryFolders() {
+  const response = await fetch(`${BASE_URL}/library/folders`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error('Erreur lors de la récupération des dossiers');
+  return response.json();
+}
+
+export async function createLibraryFolder(name) {
+  const response = await fetch(`${BASE_URL}/library/folders`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) throw new Error('Erreur lors de la création du dossier');
+  return response.json();
+}
+
+export async function renameLibraryFolder(folderId, name) {
+  const response = await fetch(`${BASE_URL}/library/folders/${folderId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) throw new Error('Erreur lors du renommage du dossier');
+  return response.json();
+}
+
+export async function deleteLibraryFolder(folderId) {
+  const response = await fetch(`${BASE_URL}/library/folders/${folderId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error('Erreur lors de la suppression du dossier');
+  return response.json();
+}
+
+export async function moveMangaToFolder(mangaId, folderId) {
+  const response = await fetch(`${BASE_URL}/library/${mangaId}/folder`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ folder_id: folderId }),
+  });
+  if (!response.ok) throw new Error('Erreur lors du déplacement');
+  return response.json();
+}
+
+export async function renameManga(mangaId, title) {
+  const response = await fetch(`${BASE_URL}/library/${mangaId}/rename`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ title }),
+  });
+  if (!response.ok) throw new Error('Erreur lors du renommage');
+  return response.json();
+}
+
+export async function deleteManga(mangaId) {
+  const response = await fetch(`${BASE_URL}/library/${mangaId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error('Erreur lors de la suppression');
   return response.json();
 }
 
@@ -133,9 +237,12 @@ export async function getMangaFileBlob(mangaId) {
   return response.blob();
 }
 
-export async function importToLibrary(file) {
+export async function importToLibrary(file, folderId = null) {
   const formData = new FormData();
   formData.append("file", file);
+  if (folderId) {
+    formData.append("folder_id", folderId);
+  }
 
   const response = await fetch(`${BASE_URL}/library/import`, {
     method: "POST",

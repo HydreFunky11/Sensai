@@ -1,21 +1,55 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getLibrary, importToLibrary } from '../../api/client';
+import { getLibrary, importToLibrary, getLibraryFolders, createLibraryFolder, renameLibraryFolder, deleteLibraryFolder, moveMangaToFolder, renameManga, deleteManga } from '../../api/client';
 
 export default function Home() {
   const [library, setLibrary] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [selectedFolderId, setSelectedFolderId] = useState(null);
+  
+  const [sortBy, setSortBy] = useState('date');
+  const [order, setOrder] = useState('desc');
+
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  
+  // States for options menus
+  const [activeMangaId, setActiveMangaId] = useState(null);
+  const [activeFolderId, setActiveFolderId] = useState(null);
+
+  // States for Modals
+  const [renameModal, setRenameModal] = useState({ isOpen: false, manga: null, title: '' });
+  const [moveModal, setMoveModal] = useState({ isOpen: false, manga: null, targetFolderId: '' });
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, manga: null });
+  
+  const [renameFolderModal, setRenameFolderModal] = useState({ isOpen: false, folder: null, name: '' });
+  const [deleteFolderModal, setDeleteFolderModal] = useState({ isOpen: false, folder: null });
+
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadLibrary();
+    init();
   }, []);
 
-  async function loadLibrary() {
+  useEffect(() => {
+    loadLibrary(selectedFolderId, sortBy, order);
+  }, [selectedFolderId, sortBy, order]);
+
+  async function init() {
     try {
-      const data = await getLibrary();
+      const f = await getLibraryFolders();
+      setFolders(f);
+    } catch (e) {
+      console.error("Erreur folders", e);
+    }
+  }
+
+  async function loadLibrary(folderId, sortMethod = sortBy, sortOrder = order) {
+    setLoading(true);
+    try {
+      const data = await getLibrary(folderId, sortMethod, sortOrder);
       setLibrary(data);
     } catch (err) {
       console.error(err);
@@ -23,6 +57,18 @@ export default function Home() {
       setLoading(false);
     }
   }
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    try {
+      const folder = await createLibraryFolder(newFolderName);
+      setFolders([...folders, folder]);
+      setNewFolderName('');
+      setSelectedFolderId(folder.id);
+    } catch(e) {
+      alert("Erreur création dossier");
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -35,8 +81,8 @@ export default function Home() {
 
     setImporting(true);
     try {
-      await importToLibrary(file);
-      await loadLibrary(); // Recharger la bibliothèque après l'import
+      await importToLibrary(file, selectedFolderId);
+      await loadLibrary(selectedFolderId, sortBy, order);
     } catch (err) {
       alert("Erreur lors de l'import: " + err.message);
     } finally {
@@ -46,20 +92,131 @@ export default function Home() {
   };
 
   const openReader = (manga) => {
-    // Naviguer vers le lecteur en passant l'ID ou le chemin du manga
     navigate('/reader', { state: { manga } });
   };
 
+  // --- ACTIONS MODALES MANGAS ---
+  
+  const openRenameModal = (e, manga) => {
+    e.stopPropagation();
+    setRenameModal({ isOpen: true, manga: manga, title: manga.title });
+    setActiveMangaId(null);
+  };
+
+  const submitRename = async () => {
+    if (!renameModal.title.trim() || !renameModal.manga) return;
+    try {
+      await renameManga(renameModal.manga.id, renameModal.title.trim());
+      await loadLibrary(selectedFolderId, sortBy, order);
+      setRenameModal({ isOpen: false, manga: null, title: '' });
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const openDeleteModal = (e, manga) => {
+    e.stopPropagation();
+    setDeleteModal({ isOpen: true, manga: manga });
+    setActiveMangaId(null);
+  };
+
+  const submitDelete = async () => {
+    if (!deleteModal.manga) return;
+    try {
+      await deleteManga(deleteModal.manga.id);
+      await loadLibrary(selectedFolderId, sortBy, order);
+      setDeleteModal({ isOpen: false, manga: null });
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const openMoveModal = (e, manga) => {
+    e.stopPropagation();
+    setMoveModal({ isOpen: true, manga: manga, targetFolderId: manga.folder_id || '' });
+    setActiveMangaId(null);
+  };
+
+  const submitMove = async () => {
+    if (!moveModal.manga) return;
+    const folderId = moveModal.targetFolderId === '' ? null : parseInt(moveModal.targetFolderId);
+    try {
+      await moveMangaToFolder(moveModal.manga.id, folderId);
+      await loadLibrary(selectedFolderId, sortBy, order);
+      setMoveModal({ isOpen: false, manga: null, targetFolderId: '' });
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const toggleMenu = (e, mangaId) => {
+    e.stopPropagation();
+    setActiveMangaId(activeMangaId === mangaId ? null : mangaId);
+    setActiveFolderId(null);
+  };
+
+  // --- ACTIONS MODALES DOSSIERS ---
+
+  const toggleFolderMenu = (e, folderId) => {
+    e.stopPropagation();
+    setActiveFolderId(activeFolderId === folderId ? null : folderId);
+    setActiveMangaId(null);
+  };
+
+  const openRenameFolderModal = (e, folder) => {
+    e.stopPropagation();
+    setRenameFolderModal({ isOpen: true, folder: folder, name: folder.name });
+    setActiveFolderId(null);
+  };
+
+  const submitRenameFolder = async () => {
+    if (!renameFolderModal.name.trim() || !renameFolderModal.folder) return;
+    try {
+      await renameLibraryFolder(renameFolderModal.folder.id, renameFolderModal.name.trim());
+      await init();
+      setRenameFolderModal({ isOpen: false, folder: null, name: '' });
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const openDeleteFolderModal = (e, folder) => {
+    e.stopPropagation();
+    setDeleteFolderModal({ isOpen: true, folder: folder });
+    setActiveFolderId(null);
+  };
+
+  const submitDeleteFolder = async () => {
+    if (!deleteFolderModal.folder) return;
+    try {
+      await deleteLibraryFolder(deleteFolderModal.folder.id);
+      if (selectedFolderId === deleteFolderModal.folder.id) {
+        setSelectedFolderId(null);
+      } else {
+        await loadLibrary(selectedFolderId, sortBy, order);
+      }
+      await init();
+      setDeleteFolderModal({ isOpen: false, folder: null });
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const closeAllMenus = () => {
+    setActiveMangaId(null);
+    setActiveFolderId(null);
+  };
+
   return (
-    <div style={styles.container}>
+    <div style={styles.container} onClick={closeAllMenus}>
       <nav style={styles.nav}>
         <h1 style={styles.logo}>SensAI Library</h1>
         <div style={{ display: 'flex', gap: '15px' }}>
           <button onClick={() => navigate('/study')} style={{...styles.navBtn, background: '#27ae60'}}>
-            🧠 Révisions (Anki)
+            🧠 Révisions
           </button>
           <button onClick={() => fileInputRef.current?.click()} style={{...styles.navBtn, background: '#3498db'}}>
-            {importing ? '⏳ Importation...' : '📥 Importer'}
+            {importing ? '⏳ Importation...' : '📥 Importer Ici'}
           </button>
           <button onClick={handleLogout} style={{...styles.navBtn, background: '#e74c3c'}}>
             Déconnexion
@@ -74,116 +231,242 @@ export default function Home() {
         </div>
       </nav>
       
-      <main style={styles.main}>
-        {loading ? (
-          <div style={styles.center}>Chargement de la bibliothèque...</div>
-        ) : library.length === 0 ? (
-          <div style={styles.center}>
-            <h2>Votre bibliothèque est vide</h2>
-            <p>Cliquez sur "Importer" pour ajouter votre premier manga ou document PDF.</p>
+      <div style={styles.layout}>
+        {/* SIDEBAR DOSSIERS */}
+        <aside style={styles.sidebar}>
+          <h3 style={{ color: '#bdc3c7', marginTop: 0 }}>Dossiers</h3>
+          <ul style={styles.folderList}>
+            <li 
+              style={{...styles.folderItem, background: selectedFolderId === null ? '#34495e' : 'transparent'}}
+              onClick={() => setSelectedFolderId(null)}
+            >
+              📁 Tous
+            </li>
+            {folders.map(f => (
+              <li 
+                key={f.id} 
+                style={{...styles.folderItem, background: selectedFolderId === f.id ? '#34495e' : 'transparent', position: 'relative'}}
+                onClick={() => setSelectedFolderId(f.id)}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>📁 {f.name}</span>
+                  <button onClick={(e) => toggleFolderMenu(e, f.id)} style={styles.folderOptionsBtn}>⋮</button>
+                </div>
+                
+                {/* Menu Options Dossier */}
+                {activeFolderId === f.id && (
+                  <div style={styles.folderOptionsMenu}>
+                    <button onClick={(e) => openRenameFolderModal(e, f)} style={styles.menuItem}>Renommer</button>
+                    <button onClick={(e) => openDeleteFolderModal(e, f)} style={{...styles.menuItem, color: '#e74c3c'}}>Supprimer</button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+          
+          <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <input 
+              value={newFolderName}
+              onChange={e => setNewFolderName(e.target.value)}
+              placeholder="Nouveau dossier..."
+              style={styles.folderInput}
+            />
+            <button onClick={handleCreateFolder} style={styles.folderAddBtn}>+ Ajouter</button>
           </div>
-        ) : (
-          <div style={styles.grid}>
-            {library.map(manga => (
-              <div key={manga.id} style={styles.mangaCard} onClick={() => openReader(manga)}>
-                {/* Fallback de cover si aucune image (pour Tachiyomi style) */}
-                <div style={styles.coverPlaceholder}>
-                  {manga.cover_image ? (
-                    <img src={manga.cover_image} alt={manga.title} style={styles.coverImg} loading="lazy" />
-                  ) : (
-                    <span style={styles.coverText}>{manga.title[0].toUpperCase()}</span>
+        </aside>
+
+        {/* MAIN LIBRARY GRID */}
+        <main style={styles.main}>
+          <div style={styles.toolbar}>
+             <div style={styles.sortControls}>
+               <span style={{ color: '#bdc3c7', fontSize: '0.9rem' }}>Trier par :</span>
+               <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={styles.sortSelect}>
+                 <option value="date">Date d'ajout</option>
+                 <option value="name">Titre</option>
+               </select>
+               <button onClick={() => setOrder(order === 'asc' ? 'desc' : 'asc')} style={styles.sortBtn}>
+                 {order === 'asc' ? '⬆️ Asc' : '⬇️ Desc'}
+               </button>
+             </div>
+          </div>
+          
+          {loading ? (
+            <div style={styles.center}>Chargement de la bibliothèque...</div>
+          ) : library.length === 0 ? (
+            <div style={styles.center}>
+              <h2>Dossier vide</h2>
+              <p>Cliquez sur "Importer Ici" pour ajouter votre premier manga ou document PDF.</p>
+            </div>
+          ) : (
+            <div style={styles.grid}>
+              {library.map(manga => (
+                <div key={manga.id} style={styles.mangaCard} onClick={() => openReader(manga)}>
+                  <div style={styles.coverPlaceholder}>
+                    {manga.cover_image ? (
+                      <img src={manga.cover_image} alt={manga.title} style={styles.coverImg} loading="lazy" />
+                    ) : (
+                      <span style={styles.coverText}>{manga.title[0].toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div style={styles.mangaTitleWrapper}>
+                    <h3 style={styles.mangaTitle}>{manga.title}</h3>
+                    <button 
+                      onClick={(e) => toggleMenu(e, manga.id)} 
+                      style={styles.optionsBtn}
+                    >
+                      ⋮
+                    </button>
+                  </div>
+                  
+                  {/* Menu Options Manga */}
+                  {activeMangaId === manga.id && (
+                    <div style={styles.optionsMenu}>
+                      <button onClick={(e) => openRenameModal(e, manga)} style={styles.menuItem}>Renommer</button>
+                      <button onClick={(e) => openMoveModal(e, manga)} style={styles.menuItem}>Déplacer</button>
+                      <button onClick={(e) => openDeleteModal(e, manga)} style={{...styles.menuItem, color: '#e74c3c'}}>Supprimer</button>
+                    </div>
                   )}
                 </div>
-                <div style={styles.mangaTitleWrapper}>
-                  <h3 style={styles.mangaTitle}>{manga.title}</h3>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* MODALS OMITTED FOR BREVITY, REST OF CODE SAME AS BEFORE */}
+      {/* MODAL DE RENOMMAGE MANGA */}
+      {renameModal.isOpen && (
+        <div style={styles.modalOverlay} onClick={() => setRenameModal({ isOpen: false, manga: null, title: '' })}>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Renommer l'œuvre</h3>
+            <input 
+              type="text" 
+              value={renameModal.title} 
+              onChange={e => setRenameModal({ ...renameModal, title: e.target.value })}
+              style={styles.modalInput}
+              autoFocus
+            />
+            <div style={styles.modalActions}>
+              <button onClick={() => setRenameModal({ isOpen: false, manga: null, title: '' })} style={styles.btnCancel}>Annuler</button>
+              <button onClick={submitRename} style={styles.btnSave}>Sauvegarder</button>
+            </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
+
+      {/* MODAL DE DÉPLACEMENT MANGA */}
+      {moveModal.isOpen && (
+        <div style={styles.modalOverlay} onClick={() => setMoveModal({ isOpen: false, manga: null, targetFolderId: '' })}>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Déplacer l'œuvre</h3>
+            <p style={{ color: '#7f8c8d', marginBottom: '15px' }}>Où souhaitez-vous ranger "{moveModal.manga?.title}" ?</p>
+            <select 
+              value={moveModal.targetFolderId} 
+              onChange={e => setMoveModal({ ...moveModal, targetFolderId: e.target.value })}
+              style={styles.modalInput}
+            >
+              <option value="">📁 Tous (Racine)</option>
+              {folders.map(f => (
+                <option key={f.id} value={f.id}>📁 {f.name}</option>
+              ))}
+            </select>
+            <div style={styles.modalActions}>
+              <button onClick={() => setMoveModal({ isOpen: false, manga: null, targetFolderId: '' })} style={styles.btnCancel}>Annuler</button>
+              <button onClick={submitMove} style={styles.btnSave}>Déplacer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE SUPPRESSION MANGA */}
+      {deleteModal.isOpen && (
+        <div style={styles.modalOverlay} onClick={() => setDeleteModal({ isOpen: false, manga: null })}>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, color: '#e74c3c' }}>Supprimer l'œuvre</h3>
+            <p style={{ color: '#2c3e50' }}>Voulez-vous vraiment supprimer définitivement <strong>{deleteModal.manga?.title}</strong> ?</p>
+            <p style={{ color: '#7f8c8d', fontSize: '0.85rem', marginBottom: '20px' }}>Cette action supprimera également le fichier du serveur.</p>
+            <div style={styles.modalActions}>
+              <button onClick={() => setDeleteModal({ isOpen: false, manga: null })} style={styles.btnCancel}>Annuler</button>
+              <button onClick={submitDelete} style={{...styles.btnSave, background: '#e74c3c'}}>Supprimer définitivement</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE RENOMMAGE DOSSIER */}
+      {renameFolderModal.isOpen && (
+        <div style={styles.modalOverlay} onClick={() => setRenameFolderModal({ isOpen: false, folder: null, name: '' })}>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Renommer le dossier</h3>
+            <input 
+              type="text" 
+              value={renameFolderModal.name} 
+              onChange={e => setRenameFolderModal({ ...renameFolderModal, name: e.target.value })}
+              style={styles.modalInput}
+              autoFocus
+            />
+            <div style={styles.modalActions}>
+              <button onClick={() => setRenameFolderModal({ isOpen: false, folder: null, name: '' })} style={styles.btnCancel}>Annuler</button>
+              <button onClick={submitRenameFolder} style={styles.btnSave}>Sauvegarder</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE SUPPRESSION DOSSIER */}
+      {deleteFolderModal.isOpen && (
+        <div style={styles.modalOverlay} onClick={() => setDeleteFolderModal({ isOpen: false, folder: null })}>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, color: '#e74c3c' }}>Supprimer le dossier</h3>
+            <p style={{ color: '#2c3e50' }}>Voulez-vous vraiment supprimer le dossier <strong>{deleteFolderModal.folder?.name}</strong> ?</p>
+            <p style={{ color: '#e74c3c', fontWeight: 'bold', marginBottom: '5px' }}>ATTENTION : DANGER ⚠️</p>
+            <p style={{ color: '#7f8c8d', fontSize: '0.85rem', marginBottom: '20px' }}>Cette action est irréversible. TOUTES les œuvres contenues dans ce dossier, ainsi que leurs fichiers sur le serveur, seront détruits !</p>
+            <div style={styles.modalActions}>
+              <button onClick={() => setDeleteFolderModal({ isOpen: false, folder: null })} style={styles.btnCancel}>Annuler</button>
+              <button onClick={submitDeleteFolder} style={{...styles.btnSave, background: '#e74c3c'}}>Oui, tout détruire</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 const styles = {
-  container: { minHeight: '100vh', background: '#121212', fontFamily: 'sans-serif', color: 'white' },
-  nav: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '0 20px',
-    background: '#1e1e1e',
-    height: '64px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-    position: 'sticky',
-    top: 0,
-    zIndex: 100
-  },
+  container: { minHeight: '100vh', background: '#121212', fontFamily: 'sans-serif', color: 'white', display: 'flex', flexDirection: 'column' },
+  nav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', background: '#1e1e1e', height: '64px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 100 },
   logo: { fontSize: '20px', margin: 0, fontWeight: 'bold' },
-  navBtn: {
-    color: 'white',
-    border: 'none',
-    padding: '8px 15px',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-    fontSize: '0.9rem'
-  },
-  main: { padding: '20px' },
-  center: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center', color: '#aaaaaa' },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-    gap: '12px',
-    // Optimisation pour beaucoup d'items: CSS grid est natif et très rapide. 
-    // `content-visibility: auto` peut aider au scroll sur les grosses bibliothèques
-    contentVisibility: 'auto'
-  },
-  mangaCard: {
-    background: '#1e1e1e',
-    borderRadius: '6px',
-    overflow: 'hidden',
-    cursor: 'pointer',
-    position: 'relative',
-    aspectRatio: '2 / 3', // Ratio typique d'une couverture de manga
-    boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
-    transition: 'transform 0.1s ease-in-out',
-    '&:hover': { transform: 'scale(1.02)' }
-  },
-  coverPlaceholder: {
-    width: '100%',
-    height: '100%',
-    background: 'linear-gradient(135deg, #2c3e50, #34495e)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coverImg: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover'
-  },
-  coverText: {
-    fontSize: '4rem',
-    color: 'rgba(255,255,255,0.3)',
-    fontWeight: 'bold'
-  },
-  mangaTitleWrapper: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
-    padding: '20px 8px 8px 8px',
-  },
-  mangaTitle: {
-    margin: 0,
-    fontSize: '0.85rem',
-    color: 'white',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    textShadow: '1px 1px 2px black'
-  }
+  navBtn: { color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' },
+  layout: { display: 'flex', flex: 1, overflow: 'hidden' },
+  sidebar: { width: '250px', background: '#1a1a1a', borderRight: '1px solid #333', padding: '20px', overflowY: 'auto' },
+  folderList: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' },
+  folderItem: { padding: '10px', borderRadius: '5px', cursor: 'pointer', color: '#ecf0f1', transition: 'background 0.2s' },
+  folderOptionsBtn: { background: 'transparent', border: 'none', color: '#bdc3c7', fontSize: '1.2rem', cursor: 'pointer', padding: '0 5px' },
+  folderOptionsMenu: { position: 'absolute', top: '35px', right: '5px', background: '#2c3e50', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 20 },
+  folderInput: { padding: '8px', borderRadius: '4px', border: '1px solid #333', background: '#2c2c2c', color: 'white' },
+  folderAddBtn: { padding: '8px', borderRadius: '4px', border: 'none', background: '#2c3e50', color: 'white', cursor: 'pointer' },
+  main: { flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column' },
+  toolbar: { display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' },
+  sortControls: { display: 'flex', alignItems: 'center', gap: '10px', background: '#1e1e1e', padding: '8px 15px', borderRadius: '6px', border: '1px solid #333' },
+  sortSelect: { padding: '5px', background: '#2c2c2c', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' },
+  sortBtn: { background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1rem' },
+  center: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, textAlign: 'center', color: '#aaaaaa' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px', contentVisibility: 'auto' },
+  mangaCard: { background: '#1e1e1e', borderRadius: '6px', overflow: 'hidden', cursor: 'pointer', position: 'relative', aspectRatio: '2 / 3', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', transition: 'transform 0.1s ease-in-out', '&:hover': { transform: 'scale(1.02)' } },
+  coverPlaceholder: { width: '100%', height: '100%', background: 'linear-gradient(135deg, #2c3e50, #34495e)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  coverImg: { width: '100%', height: '100%', objectFit: 'cover' },
+  coverText: { fontSize: '4rem', color: 'rgba(255,255,255,0.3)', fontWeight: 'bold' },
+  mangaTitleWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)', padding: '20px 8px 8px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' },
+  mangaTitle: { margin: 0, fontSize: '0.85rem', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '1px 1px 2px black', flex: 1 },
+  optionsBtn: { background: 'transparent', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', padding: '0 5px', textShadow: '1px 1px 2px black' },
+  optionsMenu: { position: 'absolute', bottom: '35px', right: '5px', background: '#2c3e50', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 10 },
+  menuItem: { padding: '10px 15px', background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', textAlign: 'left', fontSize: '0.85rem', borderBottom: '1px solid #34495e' },
+  
+  // Styles de la modale
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  modalContent: { background: 'white', padding: '25px', borderRadius: '8px', width: '90%', maxWidth: '400px', boxShadow: '0 5px 15px rgba(0,0,0,0.3)' },
+  modalInput: { width: '100%', padding: '10px', fontSize: '1rem', border: '1px solid #bdc3c7', borderRadius: '4px', marginBottom: '20px', boxSizing: 'border-box', color: '#2c3e50' },
+  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: '10px' },
+  btnCancel: { padding: '8px 15px', background: '#ecf0f1', color: '#7f8c8d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' },
+  btnSave: { padding: '8px 15px', background: '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }
 };

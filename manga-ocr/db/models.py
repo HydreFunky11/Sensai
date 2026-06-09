@@ -14,16 +14,28 @@ class User(Base):
     mangas = relationship("Manga", back_populates="owner")
     decks = relationship("Deck", back_populates="owner")
 
+class MangaFolder(Base):
+    __tablename__ = "manga_folders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String)
+
+    owner = relationship("User")
+    mangas = relationship("Manga", back_populates="folder")
+
 class Manga(Base):
     __tablename__ = "mangas"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True) # null for demo mangas
+    folder_id = Column(Integer, ForeignKey("manga_folders.id"), nullable=True)
     title = Column(String)
     file_path = Column(String)
     cover_image = Column(String, nullable=True)
 
     owner = relationship("User", back_populates="mangas")
+    folder = relationship("MangaFolder", back_populates="mangas")
 
 class Deck(Base):
     __tablename__ = "decks"
