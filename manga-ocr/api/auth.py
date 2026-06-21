@@ -49,6 +49,8 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
 from api.deps import get_current_user
 
+from typing import Optional
+
 class UserMe(BaseModel):
     id: int
     email: str
@@ -59,4 +61,31 @@ class UserMe(BaseModel):
 
 @router.get("/me", response_model=UserMe)
 def get_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
+
+class ProfileUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+
+@router.put("/me", response_model=UserMe)
+def update_profile(
+    profile_data: ProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if profile_data.email:
+        # Check if email is already registered by another user
+        existing_user = db.query(models.User).filter(
+            models.User.email == profile_data.email, 
+            models.User.id != current_user.id
+        ).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Cette adresse email est déjà utilisée par un autre compte.")
+        current_user.email = profile_data.email
+
+    if profile_data.password:
+        current_user.hashed_password = security.get_password_hash(profile_data.password)
+
+    db.commit()
+    db.refresh(current_user)
     return current_user

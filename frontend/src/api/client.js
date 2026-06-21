@@ -230,6 +230,22 @@ export async function createPortalSession() {
   return response.json();
 }
 
+export async function updateProfile(profileData) {
+  const response = await fetch(`${BASE_URL}/auth/me`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(profileData),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de la mise à jour du profil");
+  }
+  return response.json();
+}
+
 // --- LIBRARY ---
 
 export async function getLibrary(folderId = null, sortBy = 'date', order = 'desc') {

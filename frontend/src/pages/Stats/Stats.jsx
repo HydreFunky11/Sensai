@@ -207,27 +207,26 @@ export default function Stats() {
 
   const totalReviews = Object.values(stats.daily || {}).reduce((a, b) => a + b, 0);
 
-  const renderPremiumCard = () => (
-    <div style={styles.premiumCard}>
-      <div style={styles.premiumTextSection}>
-        <h3 style={styles.premiumCardTitle}>
-          {user?.is_premium ? "👑 SensAI Premium Actif" : "⚡ Passez à SensAI Premium"}
-        </h3>
-        <p style={styles.premiumCardDesc}>
-          {user?.is_premium 
-            ? "Merci de soutenir SensAI ! Vous disposez de l'analyse illimitée, ainsi que de dossiers et fiches de révisions sans aucune restriction."
-            : "Limites actuelles (Mode Gratuit) : 20 analyses / 6h, 5 dossiers max, 15 cartes par dossier. S'abonner pour débloquer l'illimité !"}
-        </p>
+  const renderPremiumCard = () => {
+    if (user?.is_premium) return null; // Hide the card when user is premium
+    return (
+      <div style={styles.premiumCard}>
+        <div style={styles.premiumTextSection}>
+          <h3 style={styles.premiumCardTitle}>⚡ Passez à SensAI Premium</h3>
+          <p style={styles.premiumCardDesc}>
+            Limites actuelles (Mode Gratuit) : 20 analyses / 6h, 5 dossiers max, 15 fiches par dossier. S'abonner pour débloquer l'illimité !
+          </p>
+        </div>
+        <button 
+          onClick={handleCheckout} 
+          disabled={checkoutLoading} 
+          style={styles.btnPremiumUpgrade}
+        >
+          {checkoutLoading ? "Chargement..." : "👑 S'abonner (9.99€/mois)"}
+        </button>
       </div>
-      <button 
-        onClick={user?.is_premium ? handlePortal : handleCheckout} 
-        disabled={checkoutLoading} 
-        style={user?.is_premium ? styles.btnPremiumManage : styles.btnPremiumUpgrade}
-      >
-        {checkoutLoading ? "Chargement..." : (user?.is_premium ? "⚙️ Gérer mon abonnement" : "👑 S'abonner (9.99€/mois)")}
-      </button>
-    </div>
-  );
+    );
+  };
 
   if (totalReviews === 0) {
     return (

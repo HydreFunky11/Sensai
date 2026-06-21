@@ -79,6 +79,18 @@ export function Navbar({ onImportClick, importing }) {
         >
           📊 Stats
         </button>
+        <button 
+          onClick={() => navigate('/profile')} 
+          aria-label="Accéder au profil"
+          style={{
+            ...styles.navBtn, 
+            background: currentPath === '/profile' ? '#e67e22' : 'transparent',
+            border: currentPath === '/profile' ? 'none' : '1px solid #444',
+            color: currentPath === '/profile' ? 'white' : '#cbd5e1'
+          }}
+        >
+          👤 Profil
+        </button>
 
         {currentPath === '/' && onImportClick && (
           <button 
