@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getLibrary, importToLibrary, getLibraryFolders, createLibraryFolder, renameLibraryFolder, deleteLibraryFolder, moveMangaToFolder, renameManga, deleteManga } from '../../api/client';
 import { Navbar } from '../../components/Navbar/Navbar';
+import { toast } from 'react-hot-toast';
 
 export default function Home() {
   const [library, setLibrary] = useState([]);
@@ -66,8 +67,9 @@ export default function Home() {
       setFolders([...folders, folder]);
       setNewFolderName('');
       setSelectedFolderId(folder.id);
+      toast.success("Dossier créé avec succès !");
     } catch(e) {
-      alert("Erreur création dossier");
+      toast.error("Erreur création dossier");
     }
   };
 
@@ -84,8 +86,9 @@ export default function Home() {
     try {
       await importToLibrary(file, selectedFolderId);
       await loadLibrary(selectedFolderId, sortBy, order);
+      toast.success("Document importé avec succès !");
     } catch (err) {
-      alert("Erreur lors de l'import: " + err.message);
+      toast.error("Erreur lors de l'import: " + err.message);
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -110,8 +113,9 @@ export default function Home() {
       await renameManga(renameModal.manga.id, renameModal.title.trim());
       await loadLibrary(selectedFolderId, sortBy, order);
       setRenameModal({ isOpen: false, manga: null, title: '' });
+      toast.success("Document renommé !");
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -127,8 +131,9 @@ export default function Home() {
       await deleteManga(deleteModal.manga.id);
       await loadLibrary(selectedFolderId, sortBy, order);
       setDeleteModal({ isOpen: false, manga: null });
+      toast.success("Document supprimé !");
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -145,8 +150,9 @@ export default function Home() {
       await moveMangaToFolder(moveModal.manga.id, folderId);
       await loadLibrary(selectedFolderId, sortBy, order);
       setMoveModal({ isOpen: false, manga: null, targetFolderId: '' });
+      toast.success("Document déplacé avec succès !");
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -176,8 +182,9 @@ export default function Home() {
       await renameLibraryFolder(renameFolderModal.folder.id, renameFolderModal.name.trim());
       await init();
       setRenameFolderModal({ isOpen: false, folder: null, name: '' });
+      toast.success("Dossier renommé !");
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -198,8 +205,9 @@ export default function Home() {
       }
       await init();
       setDeleteFolderModal({ isOpen: false, folder: null });
+      toast.success("Dossier supprimé !");
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

@@ -8,6 +8,7 @@ import { Viewer } from "./components/Viewer/Viewer";
 import { AnalysisPanel } from "./components/Analysis/AnalysisPanel";
 import { CalibrationOverlay } from "./components/Calibration/CalibrationOverlay";
 import { getMangaFileBlob } from "./api/client";
+import { toast } from "react-hot-toast";
 
 function ReaderApp() {
   const location = useLocation();
@@ -51,7 +52,7 @@ function ReaderApp() {
           const file = new File([blob], manga.title + (manga.file_path.endsWith('.pdf') ? '.pdf' : '.jpg'), { type: blob.type });
           loadFromFile(file);
         })
-        .catch(err => alert("Impossible de charger le document: " + err.message));
+        .catch(err => toast.error("Impossible de charger le document: " + err.message));
     }
   }, [location.state]);
 

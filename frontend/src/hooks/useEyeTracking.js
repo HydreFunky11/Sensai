@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+import { toast } from 'react-hot-toast';
 
 export function useEyeTracking(isActive) {
   const [gazeData, setGazeData] = useState({ x: 0, y: 0 });
@@ -173,7 +174,7 @@ export function useEyeTracking(isActive) {
         };
       } catch (err) {
         console.error("❌ Impossible d'accéder à la webcam:", err);
-        alert("Erreur webcam : Vérifiez les permissions de votre navigateur.");
+        toast.error("Erreur webcam : Vérifiez les permissions de votre navigateur.");
       }
     }
 

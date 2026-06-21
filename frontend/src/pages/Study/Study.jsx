@@ -13,6 +13,7 @@ import {
 } from "../../api/client";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "../../components/Navbar/Navbar";
+import { toast } from "react-hot-toast";
 
 export default function Study() {
   const [viewMode, setViewMode] = useState("decks"); // 'decks', 'study', 'edit'
@@ -77,7 +78,7 @@ export default function Study() {
         isFreeReview = true;
       }
       if (data.length === 0) {
-        alert(
+        toast.error(
           "Ce dossier est vide ! Ajoutez des fiches depuis l'application de lecture avant de réviser.",
         );
         return;
@@ -88,7 +89,7 @@ export default function Study() {
       setShowAnswer(false);
       setViewMode("study");
     } catch (e) {
-      alert("Erreur chargement session: " + e.message);
+      toast.error("Erreur chargement session: " + e.message);
     } finally {
       setLoading(false);
     }
@@ -130,14 +131,14 @@ export default function Study() {
         } catch (logErr) {
           console.error("Erreur enregistrement complétion dossier:", logErr);
         }
-        alert(
+        toast.success(
           "🎉 Toutes les fiches prévues pour cette session ont été révisées !",
         );
         setViewMode("decks");
         loadDecksAndStats();
       }
     } catch (err) {
-      alert("Erreur lors de la sauvegarde: " + err.message);
+      toast.error("Erreur lors de la sauvegarde: " + err.message);
     }
   };
 
@@ -150,7 +151,7 @@ export default function Study() {
       setDeckCards(allDeckCards);
       setViewMode("edit");
     } catch (e) {
-      alert("Erreur chargement des cartes du dossier: " + e.message);
+      toast.error("Erreur chargement des cartes du dossier: " + e.message);
     } finally {
       setLoading(false);
     }
@@ -158,15 +159,15 @@ export default function Study() {
 
   const handleRenameDeck = async () => {
     if (!editDeckTitle.trim()) {
-      alert("Le titre ne peut pas être vide");
+      toast.error("Le titre ne peut pas être vide");
       return;
     }
     try {
       const updated = await renameDeck(selectedDeck.id, editDeckTitle);
       setSelectedDeck(updated);
-      alert("Dossier renommé avec succès !");
+      toast.success("Dossier renommé avec succès !");
     } catch (e) {
-      alert("Erreur renommage: " + e.message);
+      toast.error("Erreur renommage: " + e.message);
     }
   };
 
@@ -175,8 +176,9 @@ export default function Study() {
     try {
       await deleteFlashcard(cardId);
       setDeckCards((prev) => prev.filter((c) => c.id !== cardId));
+      toast.success("Carte supprimée avec succès !");
     } catch (e) {
-      alert("Erreur lors de la suppression de la carte: " + e.message);
+      toast.error("Erreur lors de la suppression de la carte: " + e.message);
     }
   };
 
@@ -187,8 +189,9 @@ export default function Study() {
       await createDeck(newDeckTitle);
       setNewDeckTitle("");
       loadDecksAndStats();
+      toast.success("Dossier de révision créé !");
     } catch (e) {
-      alert("Erreur lors de la création du dossier: " + e.message);
+      toast.error("Erreur lors de la création du dossier: " + e.message);
     }
   };
 
@@ -202,8 +205,9 @@ export default function Study() {
     try {
       await deleteDeck(deckId);
       loadDecksAndStats();
+      toast.success("Dossier de révision supprimé !");
     } catch (e) {
-      alert("Erreur lors de la suppression du dossier: " + e.message);
+      toast.error("Erreur lors de la suppression du dossier: " + e.message);
     }
   };
 

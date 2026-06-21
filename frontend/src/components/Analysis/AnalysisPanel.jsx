@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAudioUrl, createFlashcard, getDecks, createDeck } from '../../api/client';
+import { toast } from 'react-hot-toast';
 
 export function AnalysisPanel({ analysis }) {
   const [saving, setSaving] = useState(false);
@@ -35,7 +36,7 @@ export function AnalysisPanel({ analysis }) {
       setNewDeckTitle('');
       setShowNewDeckForm(false);
     } catch (e) {
-      alert("Erreur création dossier");
+      toast.error("Erreur création dossier");
     }
   };
 
@@ -75,8 +76,9 @@ export function AnalysisPanel({ analysis }) {
       await createFlashcard(data);
       setSavedText(id);
       setTimeout(() => setSavedText(null), 2000);
+      toast.success("Fiche créée avec succès !");
     } catch (e) {
-      alert("Erreur lors de la sauvegarde : " + e.message);
+      toast.error("Erreur lors de la sauvegarde : " + e.message);
     } finally {
       setSaving(false);
     }
