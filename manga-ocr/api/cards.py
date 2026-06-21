@@ -69,6 +69,49 @@ def create_deck(deck: DeckCreate, db: Session = Depends(get_db), current_user: m
     db.refresh(db_deck)
     return db_deck
 
+class DeckRename(BaseModel):
+    title: str
+
+@router.put("/decks/{deck_id}", response_model=DeckResponse)
+def rename_deck(deck_id: int, deck_data: DeckRename, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    deck = db.query(models.Deck).filter(models.Deck.id == deck_id, models.Deck.user_id == current_user.id).first()
+    if not deck:
+        raise HTTPException(status_code=404, detail="Dossier non trouvé")
+    deck.title = deck_data.title
+    db.commit()
+    db.refresh(deck)
+    return deck
+
+@router.delete("/decks/{deck_id}")
+def delete_deck(deck_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    deck = db.query(models.Deck).filter(models.Deck.id == deck_id, models.Deck.user_id == current_user.id).first()
+    if not deck:
+        raise HTTPException(status_code=404, detail="Dossier non trouvé")
+    
+    # Supprimer les statistiques puis les cartes puis le deck
+    cards = db.query(models.Flashcard).filter(models.Flashcard.deck_id == deck_id).all()
+    card_ids = [c.id for c in cards]
+    if card_ids:
+        db.query(models.ReviewStats).filter(models.ReviewStats.flashcard_id.in_(card_ids)).delete(synchronize_session=False)
+        db.query(models.Flashcard).filter(models.Flashcard.deck_id == deck_id).delete(synchronize_session=False)
+    db.delete(deck)
+    db.commit()
+    return {"message": "Dossier supprimé avec succès"}
+
+@router.delete("/{card_id}")
+def delete_card(card_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    card = db.query(models.Flashcard).join(models.Deck).filter(
+        models.Flashcard.id == card_id,
+        models.Deck.user_id == current_user.id
+    ).first()
+    if not card:
+        raise HTTPException(status_code=404, detail="Carte non trouvée")
+        
+    db.query(models.ReviewStats).filter(models.ReviewStats.flashcard_id == card_id).delete()
+    db.delete(card)
+    db.commit()
+    return {"message": "Carte supprimée avec succès"}
+
 # --- ROUTES CARDS ---
 
 @router.post("/", response_model=FlashcardResponse)
@@ -159,5 +202,75 @@ def submit_review(card_id: int, review: ReviewSubmit, db: Session = Depends(get_
     else:
         stats.next_review_date = datetime.now() + timedelta(days=stats.interval)
 
+    # Enregistrer dans l'historique des révisions pour les statistiques
+    log_entry = models.ReviewLog(
+        user_id=current_user.id,
+        flashcard_id=card_id,
+        quality=q
+    )
+    db.add(log_entry)
+
     db.commit()
     return {"message": "Review saved", "next_review": stats.next_review_date}
+
+@router.post("/decks/{deck_id}/complete")
+def log_deck_completion(
+    deck_id: int, 
+    is_free_review: bool = False, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(get_current_user)
+):
+    """Enregistre la complétion d'une session de révision de dossier"""
+    deck = db.query(models.Deck).filter(models.Deck.id == deck_id, models.Deck.user_id == current_user.id).first()
+    if not deck:
+        raise HTTPException(status_code=404, detail="Dossier non trouvé")
+        
+    log_entry = models.DeckReviewLog(
+        user_id=current_user.id,
+        deck_id=deck_id,
+        is_free_review=is_free_review
+    )
+    db.add(log_entry)
+    db.commit()
+    return {"message": "Complétion du dossier enregistrée"}
+
+@router.get("/stats")
+def get_review_stats(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """Récupère les statistiques de révision (par dossier fini) et d'autoévaluation"""
+    deck_logs = db.query(models.DeckReviewLog).filter(models.DeckReviewLog.user_id == current_user.id).all()
+    card_logs = db.query(models.ReviewLog).filter(models.ReviewLog.user_id == current_user.id).all()
+    
+    reviews_per_week = {}
+    daily_reviews = {}
+    
+    # Agrégation par dossier révisé (DeckReviewLog)
+    for log in deck_logs:
+        # Date de révision locale
+        date_str = log.reviewed_at.strftime("%Y-%m-%d")
+        daily_reviews[date_str] = daily_reviews.get(date_str, 0) + 1
+        
+        # Par semaine de l'année (ex: 2026-W25)
+        iso_year, iso_week, _ = log.reviewed_at.isocalendar()
+        week_key = f"{iso_year}-W{iso_week:02d}"
+        reviews_per_week[week_key] = reviews_per_week.get(week_key, 0) + 1
+
+    # Boutons d'autoévaluation mois en cours (ReviewLog)
+    now = datetime.now()
+    start_of_month = datetime(now.year, now.month, 1)
+    buttons_current_month = {1: 0, 2: 0, 3: 0, 4: 0}
+    
+    for log in card_logs:
+        log_date = log.reviewed_at.replace(tzinfo=None)
+        if log_date >= start_of_month:
+            if log.quality in buttons_current_month:
+                buttons_current_month[log.quality] += 1
+                
+    # Trier les semaines chronologiquement et limiter aux 12 dernières
+    sorted_weeks = dict(sorted(reviews_per_week.items()))
+    last_12_weeks = dict(list(sorted_weeks.items())[-12:])
+    
+    return {
+        "weekly": last_12_weeks,
+        "buttons_month": buttons_current_month,
+        "daily": daily_reviews
+    }

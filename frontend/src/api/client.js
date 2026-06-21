@@ -1,8 +1,17 @@
 const BASE_URL = "http://127.0.0.1:8000";
 
-export async function analyzeImage(blob) {
+export async function analyzeImage(blob, documentName = "", page = 0, boxCoordinates = null) {
   const formData = new FormData();
   formData.append("file", blob, "crop.jpg");
+  if (documentName) {
+    formData.append("document_name", documentName);
+  }
+  if (page) {
+    formData.append("page", page);
+  }
+  if (boxCoordinates) {
+    formData.append("box_coordinates", JSON.stringify(boxCoordinates));
+  }
 
   const response = await fetch(`${BASE_URL}/analyze`, {
     method: "POST",
@@ -83,6 +92,37 @@ export async function createDeck(title) {
   return response.json();
 }
 
+export async function renameDeck(deckId, title) {
+  const response = await fetch(`${BASE_URL}/cards/decks/${deckId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ title }),
+  });
+  if (!response.ok) throw new Error("Erreur lors du renommage du dossier");
+  return response.json();
+}
+
+export async function deleteDeck(deckId) {
+  const response = await fetch(`${BASE_URL}/cards/decks/${deckId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error("Erreur lors de la suppression du dossier");
+  return response.json();
+}
+
+export async function deleteFlashcard(cardId) {
+  const response = await fetch(`${BASE_URL}/cards/${cardId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error("Erreur lors de la suppression de la carte");
+  return response.json();
+}
+
 export async function getFlashcards(deckId = null) {
   const url = deckId
     ? `${BASE_URL}/cards/?deck_id=${deckId}`
@@ -123,6 +163,27 @@ export async function submitCardReview(cardId, quality) {
 
   if (!response.ok) {
     throw new Error("Erreur lors de la soumission de la révision");
+  }
+  return response.json();
+}
+
+export async function logDeckCompletion(deckId, isFreeReview = false) {
+  const response = await fetch(`${BASE_URL}/cards/decks/${deckId}/complete?is_free_review=${isFreeReview}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Erreur lors de l'enregistrement de la complétion");
+  }
+  return response.json();
+}
+
+export async function getReviewStats() {
+  const response = await fetch(`${BASE_URL}/cards/stats`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Erreur lors de la récupération des statistiques");
   }
   return response.json();
 }

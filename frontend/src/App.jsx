@@ -3,6 +3,7 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import Home from './pages/Home/Home';
 import Study from './pages/Study/Study';
+import Stats from './pages/Stats/Stats';
 import ReaderApp from './ReaderApp'; // On renomme l'ancien App.jsx
 
 const ProtectedRoute = ({ children }) => {
@@ -27,6 +28,12 @@ function App() {
         <Route path="/study" element={
           <ProtectedRoute>
             <Study />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/stats" element={
+          <ProtectedRoute>
+            <Stats />
           </ProtectedRoute>
         } />
 

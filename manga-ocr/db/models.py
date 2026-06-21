@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON, Float
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON, Float, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -73,3 +73,54 @@ class ReviewStats(Base):
     ease_factor = Column(Float, default=2.5)
 
     card = relationship("Flashcard", back_populates="review_stats")
+
+# --- CACHE TABLES ---
+
+class CacheDetection(Base):
+    """Cache pour les résultats YOLO (lié au hash de l'image)"""
+    __tablename__ = "cache_detection"
+
+    image_hash = Column(String, primary_key=True, index=True)
+    boxes = Column(JSON) # Liste des coordonnées des bulles
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class CacheTranslation(Base):
+    """Cache pour les résultats LLM (lié au texte source)"""
+    __tablename__ = "cache_translation"
+
+    text_source = Column(String, primary_key=True, index=True)
+    result_json = Column(JSON) # Le résultat complet de Groq (traduction, romaji, breakdown)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class CacheTranslationAnalysis(Base):
+    """Cache pour les résultats d'analyse et traduction (avec métadonnées document)"""
+    __tablename__ = "cache_translation_analysis"
+
+    id = Column(Integer, primary_key=True, index=True)
+    crop_hash = Column(String, index=True, nullable=True)
+    document_name = Column(String, index=True, nullable=True)
+    page = Column(Integer, index=True, nullable=True)
+    box_coordinates = Column(JSON, nullable=True)
+    text_source = Column(String, index=True)
+    result_json = Column(JSON) # Le résultat complet de l'analyse et de la traduction
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class ReviewLog(Base):
+    """Historique des révisions pour les statistiques"""
+    __tablename__ = "review_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    flashcard_id = Column(Integer, ForeignKey("flashcards.id"), index=True)
+    quality = Column(Integer)
+    reviewed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class DeckReviewLog(Base):
+    """Historique des sessions de révision terminées par dossier"""
+    __tablename__ = "deck_review_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    deck_id = Column(Integer, ForeignKey("decks.id"), index=True)
+    is_free_review = Column(Boolean, default=False)
+    reviewed_at = Column(DateTime(timezone=True), server_default=func.now())
