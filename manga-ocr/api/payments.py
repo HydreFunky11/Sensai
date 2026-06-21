@@ -1,5 +1,12 @@
 import os
 import stripe
+from dotenv import load_dotenv
+
+# Load env variables from .env
+load_dotenv()
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from db.database import get_db
@@ -60,6 +67,8 @@ def create_checkout_session(
         )
         return {"url": session.url}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/create-portal-session")
@@ -77,6 +86,8 @@ def create_portal_session(
         )
         return {"url": session.url}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/webhook")
