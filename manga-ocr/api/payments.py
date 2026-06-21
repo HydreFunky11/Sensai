@@ -8,6 +8,7 @@ load_dotenv()
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db import models
@@ -62,7 +63,7 @@ def create_checkout_session(
                 },
             ],
             mode='subscription',
-            success_url='http://localhost:5173/stats?checkout_success=true',
+            success_url='http://localhost:5173/stats?checkout_success=true&session_id={CHECKOUT_SESSION_ID}',
             cancel_url='http://localhost:5173/stats?checkout_cancel=true',
         )
         return {"url": session.url}
@@ -85,6 +86,33 @@ def create_portal_session(
             return_url='http://localhost:5173/stats',
         )
         return {"url": session.url}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=str(e))
+
+class SyncSubscriptionRequest(BaseModel):
+    session_id: str
+
+@router.post("/sync-subscription")
+def sync_subscription(
+    req: SyncSubscriptionRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Synchronously verify and activate premium subscription on return redirect"""
+    try:
+        session = stripe.checkout.Session.retrieve(req.session_id)
+        if session.payment_status == "paid" or session.subscription:
+            current_user.is_premium = True
+            current_user.subscription_id = session.subscription
+            if session.customer:
+                current_user.stripe_customer_id = session.customer
+            db.commit()
+            db.refresh(current_user)
+            return {"status": "success", "is_premium": current_user.is_premium}
+        else:
+            return {"status": "unpaid", "is_premium": current_user.is_premium}
     except Exception as e:
         import traceback
         traceback.print_exc()

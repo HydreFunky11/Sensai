@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getReviewStats, getMe, createCheckoutSession, createPortalSession } from '../../api/client';
+import { getReviewStats, getMe, createCheckoutSession, createPortalSession, syncSubscription } from '../../api/client';
 import { useNavigate } from 'react-router-dom';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { Navbar } from '../../components/Navbar/Navbar';
@@ -34,8 +34,28 @@ export default function Stats() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    async function loadData() {
+    async function loadDataAndSync() {
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get("session_id");
+      const checkoutSuccess = params.get("checkout_success") === "true";
+      const checkoutCancel = params.get("checkout_cancel") === "true";
+
+      setLoading(true);
       try {
+        if (checkoutSuccess && sessionId) {
+          try {
+            await syncSubscription(sessionId);
+            toast.success("Félicitations, vous êtes maintenant Premium ! 👑", { id: "stripe_success" });
+          } catch (syncErr) {
+            toast.error("Erreur de synchronisation de l'abonnement : " + syncErr.message);
+          }
+          // Remove query params to keep URL clean
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (checkoutCancel) {
+          toast.error("L'abonnement a été annulé.", { id: "stripe_cancel" });
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
         const statsData = await getReviewStats();
         setStats(statsData);
 
@@ -47,18 +67,7 @@ export default function Stats() {
         setLoading(false);
       }
     }
-    loadData();
-
-    // Check Stripe checkout status from URL params
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("checkout_success") === "true") {
-      toast.success("Félicitations, vous êtes maintenant Premium ! 👑", { id: "stripe_success" });
-      // Remove query params to keep URL clean
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (params.get("checkout_cancel") === "true") {
-      toast.error("L'abonnement a été annulé.", { id: "stripe_cancel" });
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
+    loadDataAndSync();
   }, []);
 
   const handleCheckout = async () => {

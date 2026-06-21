@@ -230,6 +230,22 @@ export async function createPortalSession() {
   return response.json();
 }
 
+export async function syncSubscription(sessionId) {
+  const response = await fetch(`${BASE_URL}/payments/sync-subscription`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de la synchronisation de l'abonnement");
+  }
+  return response.json();
+}
+
 export async function updateProfile(profileData) {
   const response = await fetch(`${BASE_URL}/auth/me`, {
     method: "PUT",
