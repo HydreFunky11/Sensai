@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { getReviewStats } from '../../api/client';
+import { getReviewStats, getMe, createCheckoutSession, createPortalSession } from '../../api/client';
 import { useNavigate } from 'react-router-dom';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { Navbar } from '../../components/Navbar/Navbar';
+import { toast } from 'react-hot-toast';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -26,23 +27,63 @@ ChartJS.register(
 
 export default function Stats() {
   const [stats, setStats] = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    async function loadStats() {
+    async function loadData() {
       try {
-        const data = await getReviewStats();
-        setStats(data);
+        const statsData = await getReviewStats();
+        setStats(statsData);
+
+        const userData = await getMe();
+        setUser(userData);
       } catch (err) {
         setError(err.message || "Erreur lors du chargement des statistiques");
       } finally {
         setLoading(false);
       }
     }
-    loadStats();
+    loadData();
+
+    // Check Stripe checkout status from URL params
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout_success") === "true") {
+      toast.success("Félicitations, vous êtes maintenant Premium ! 👑", { id: "stripe_success" });
+      // Remove query params to keep URL clean
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (params.get("checkout_cancel") === "true") {
+      toast.error("L'abonnement a été annulé.", { id: "stripe_cancel" });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
+
+  const handleCheckout = async () => {
+    setCheckoutLoading(true);
+    try {
+      const data = await createCheckoutSession();
+      window.location.href = data.url;
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  const handlePortal = async () => {
+    setCheckoutLoading(true);
+    try {
+      const data = await createPortalSession();
+      window.location.href = data.url;
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -166,11 +207,35 @@ export default function Stats() {
 
   const totalReviews = Object.values(stats.daily || {}).reduce((a, b) => a + b, 0);
 
+  const renderPremiumCard = () => (
+    <div style={styles.premiumCard}>
+      <div style={styles.premiumTextSection}>
+        <h3 style={styles.premiumCardTitle}>
+          {user?.is_premium ? "👑 SensAI Premium Actif" : "⚡ Passez à SensAI Premium"}
+        </h3>
+        <p style={styles.premiumCardDesc}>
+          {user?.is_premium 
+            ? "Merci de soutenir SensAI ! Vous disposez de l'analyse illimitée, ainsi que de dossiers et fiches de révisions sans aucune restriction."
+            : "Limites actuelles (Mode Gratuit) : 20 analyses / 6h, 5 dossiers max, 15 cartes par dossier. S'abonner pour débloquer l'illimité !"}
+        </p>
+      </div>
+      <button 
+        onClick={user?.is_premium ? handlePortal : handleCheckout} 
+        disabled={checkoutLoading} 
+        style={user?.is_premium ? styles.btnPremiumManage : styles.btnPremiumUpgrade}
+      >
+        {checkoutLoading ? "Chargement..." : (user?.is_premium ? "⚙️ Gérer mon abonnement" : "👑 S'abonner (9.99€/mois)")}
+      </button>
+    </div>
+  );
+
   if (totalReviews === 0) {
     return (
       <div style={styles.container}>
         <Navbar />
         <div style={styles.contentWrapper}>
+          {renderPremiumCard()}
+          
           <div style={styles.emptyStatsContainer}>
             <div style={styles.emptyStatsIcon}>📊</div>
             <h2 style={styles.emptyStatsTitle}>Aucune statistique pour le moment</h2>
@@ -200,6 +265,8 @@ export default function Stats() {
             Retour Bibliothèque
           </button>
         </div>
+
+        {renderPremiumCard()}
 
         {/* Grid des indicateurs clés (Cards) */}
         <div style={styles.statsCardGrid}>
@@ -342,6 +409,63 @@ const styles = {
     transition: 'all 0.2s ease',
     outline: 'none',
     boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+  },
+  premiumCard: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '24px',
+    background: 'linear-gradient(135deg, #1e1e1e 0%, #201730 100%)',
+    borderRadius: '16px',
+    border: '1px solid #3b255e',
+    marginBottom: '30px',
+    boxShadow: '0 4px 15px rgba(139, 92, 246, 0.1)',
+    gap: '20px',
+    flexWrap: 'wrap'
+  },
+  premiumTextSection: {
+    flex: 1,
+    minWidth: '280px'
+  },
+  premiumCardTitle: {
+    margin: '0 0 8px 0',
+    fontSize: '1.4rem',
+    fontWeight: '800',
+    color: '#e9d5ff',
+    background: 'linear-gradient(135deg, #c084fc, #f472b6)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent'
+  },
+  premiumCardDesc: {
+    margin: 0,
+    fontSize: '0.95rem',
+    color: '#cbd5e1',
+    lineHeight: '1.5'
+  },
+  btnPremiumUpgrade: {
+    padding: '12px 24px',
+    background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    fontWeight: '700',
+    boxShadow: '0 4px 12px rgba(168, 85, 247, 0.2)',
+    transition: 'all 0.2s ease',
+    outline: 'none'
+  },
+  btnPremiumManage: {
+    padding: '12px 24px',
+    background: 'transparent',
+    border: '1px solid #8b5cf6',
+    color: '#c084fc',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    fontWeight: '700',
+    transition: 'all 0.2s ease',
+    outline: 'none'
   },
   statsCardGrid: {
     display: 'grid',

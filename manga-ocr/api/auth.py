@@ -46,3 +46,17 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     
     access_token = security.create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+from api.deps import get_current_user
+
+class UserMe(BaseModel):
+    id: int
+    email: str
+    is_premium: bool
+
+    class Config:
+        from_attributes = True
+
+@router.get("/me", response_model=UserMe)
+def get_me(current_user: models.User = Depends(get_current_user)):
+    return current_user

@@ -63,6 +63,14 @@ def get_decks(db: Session = Depends(get_db), current_user: models.User = Depends
 
 @router.post("/decks", response_model=DeckResponse)
 def create_deck(deck: DeckCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user.is_premium:
+        deck_count = db.query(models.Deck).filter(models.Deck.user_id == current_user.id).count()
+        if deck_count >= 5:
+            raise HTTPException(
+                status_code=403,
+                detail="Limite de 5 dossiers de révision atteinte pour les comptes gratuits. Passez à SensAI Premium pour un nombre illimité !"
+            )
+    
     db_deck = models.Deck(user_id=current_user.id, title=deck.title, description=deck.description)
     db.add(db_deck)
     db.commit()
@@ -127,6 +135,14 @@ def create_card(card: FlashcardCreate, db: Session = Depends(get_db), current_us
             db.add(deck)
             db.commit()
             db.refresh(deck)
+
+    if not current_user.is_premium:
+        card_count = db.query(models.Flashcard).filter(models.Flashcard.deck_id == deck.id).count()
+        if card_count >= 15:
+            raise HTTPException(
+                status_code=403,
+                detail="Limite de 15 fiches par dossier atteinte pour les comptes gratuits. Passez à SensAI Premium pour un nombre illimité !"
+            )
 
     db_card = models.Flashcard(
         deck_id=deck.id,

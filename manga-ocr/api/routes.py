@@ -2,7 +2,7 @@ import hashlib
 import json
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, File, UploadFile, Response, Form, Depends, BackgroundTasks
+from fastapi import APIRouter, File, UploadFile, Response, Form, Depends, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db import models
@@ -11,6 +11,7 @@ from services.llm_service import llm_service
 from services.tts_service import tts_service
 from services.detection_service import detection_service
 from core.config import DEFAULT_VOICE
+from api.deps import get_current_user
 
 router = APIRouter()
 
@@ -73,10 +74,24 @@ async def analyze_manga(
     page: Optional[int] = Form(None),
     box_coordinates: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
     # Lancer le nettoyage en arrière-plan
     background_tasks.add_task(cleanup_old_cache, db)
+    
+    # Gating : Limite pour les comptes gratuits : 20 requêtes d'analyse par tranche de 6 heures
+    if not current_user.is_premium:
+        time_limit = datetime.utcnow() - timedelta(hours=6)
+        usage_count = db.query(models.AnalysisLog).filter(
+            models.AnalysisLog.user_id == current_user.id,
+            models.AnalysisLog.created_at >= time_limit
+        ).count()
+        if usage_count >= 20:
+            raise HTTPException(
+                status_code=403,
+                detail="Limite d'analyse de 20 requêtes par 6 heures atteinte pour les comptes gratuits. Passez à SensAI Premium pour un nombre illimité !"
+            )
     
     try:
         image_data = await file.read()
@@ -172,6 +187,16 @@ async def analyze_manga(
 
         # 4. Inférence LLM (si aucun cache)
         analysis = llm_service.analyze_text(text_source, lang=lang)
+        
+        # Enregistrer l'utilisation de l'API LLM pour le compte gratuit
+        if not current_user.is_premium:
+            try:
+                log_entry = models.AnalysisLog(user_id=current_user.id)
+                db.add(log_entry)
+                db.commit()
+            except Exception as log_err:
+                db.rollback()
+                print(f"Erreur enregistrement log utilisation: {log_err}")
         
         # Enregistrer dans les caches
         try:
