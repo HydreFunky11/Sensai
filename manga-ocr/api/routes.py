@@ -19,12 +19,15 @@ def cleanup_old_cache(db: Session):
     try:
         limit = datetime.utcnow() - timedelta(hours=48)
         # Supprimer les détections de plus de 48h
-        db.query(models.CacheDetection).filter(models.CacheDetection.created_at < limit).delete()
+        deleted_det = db.query(models.CacheDetection).filter(models.CacheDetection.created_at < limit).delete()
         # Supprimer les anciennes traductions (tables simple et enrichie)
-        db.query(models.CacheTranslation).filter(models.CacheTranslation.created_at < limit).delete()
-        db.query(models.CacheTranslationAnalysis).filter(models.CacheTranslationAnalysis.created_at < limit).delete()
+        deleted_trans = db.query(models.CacheTranslation).filter(models.CacheTranslation.created_at < limit).delete()
+        deleted_trans_an = db.query(models.CacheTranslationAnalysis).filter(models.CacheTranslationAnalysis.created_at < limit).delete()
         db.commit()
-        print("🧹 Cache nettoyé avec succès (plus de 48h)")
+        
+        total_deleted = deleted_det + deleted_trans + deleted_trans_an
+        if total_deleted > 0:
+            print(f"🧹 Cache : {total_deleted} anciennes entrées nettoyées avec succès (plus de 48h)")
     except Exception as e:
         db.rollback()
         print(f"⚠️ Erreur lors du nettoyage du cache : {e}")
