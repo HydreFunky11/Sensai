@@ -103,7 +103,8 @@ export function AnalysisPanel({ analysis }) {
   }
 
   return (
-    <div
+    <aside
+      aria-label="Analyse et traduction"
       style={{
         flex: 1,
         minWidth: "300px",
@@ -116,8 +117,8 @@ export function AnalysisPanel({ analysis }) {
       }}
     >
       {/* --- SELECTION DU DOSSIER --- */}
-      <div style={{ background: "white", padding: "15px", borderRadius: "10px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
-        <h3 style={{ margin: "0 0 10px 0", fontSize: "1rem", color: "#2c3e50" }}>📁 Dossier de destination</h3>
+      <section style={{ background: "white", padding: "15px", borderRadius: "10px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
+        <h3 id="deck-select-label" style={{ margin: "0 0 10px 0", fontSize: "1rem", color: "#2c3e50" }}>📁 Dossier de destination</h3>
         
         {showNewDeckForm ? (
           <div style={{ display: 'flex', gap: '5px' }}>
@@ -125,32 +126,48 @@ export function AnalysisPanel({ analysis }) {
               value={newDeckTitle} 
               onChange={e => setNewDeckTitle(e.target.value)} 
               placeholder="Nouveau dossier..."
+              aria-label="Nom du nouveau dossier"
               style={{ flex: 1, padding: "5px" }}
             />
-            <button onClick={handleCreateDeck} style={{ background: "#27ae60", color: "white", border: "none", padding: "5px 10px", borderRadius: "3px" }}>✓</button>
-            <button onClick={() => setShowNewDeckForm(false)} style={{ background: "#e74c3c", color: "white", border: "none", padding: "5px 10px", borderRadius: "3px" }}>✗</button>
+            <button 
+              onClick={handleCreateDeck} 
+              aria-label="Confirmer la création du dossier"
+              style={{ background: "#27ae60", color: "white", border: "none", padding: "5px 10px", borderRadius: "3px" }}
+            >
+              ✓
+            </button>
+            <button 
+              onClick={() => setShowNewDeckForm(false)} 
+              aria-label="Annuler la création"
+              style={{ background: "#e74c3c", color: "white", border: "none", padding: "5px 10px", borderRadius: "3px" }}
+            >
+              ✗
+            </button>
           </div>
         ) : (
           <div style={{ display: 'flex', gap: '10px' }}>
             <select 
               value={selectedDeckId} 
               onChange={e => setSelectedDeckId(e.target.value)}
+              aria-labelledby="deck-select-label"
               style={{ flex: 1, padding: "5px" }}
             >
               {decks.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
             </select>
             <button 
               onClick={() => setShowNewDeckForm(true)}
+              aria-label="Créer un nouveau dossier"
               style={{ background: "#3498db", color: "white", border: "none", padding: "5px 10px", borderRadius: "3px", cursor: "pointer" }}
             >
               + Nouveau
             </button>
           </div>
         )}
-      </div>
+      </section>
 
       {/* --- PHRASE COMPLETE --- */}
-      <div
+      <article
+        aria-live="polite"
         style={{
           background: "white",
           padding: "20px",
@@ -181,6 +198,7 @@ export function AnalysisPanel({ analysis }) {
               </h2>
               <button
                 onClick={() => playAudio(analysis.original)}
+                aria-label={`Écouter la prononciation de ${analysis.original}`}
                 style={{
                   cursor: "pointer",
                   border: "none",
@@ -198,6 +216,7 @@ export function AnalysisPanel({ analysis }) {
           <button
             onClick={handleSaveFull}
             disabled={saving || savedText === 'full'}
+            aria-label={savedText === 'full' ? "Phrase sauvegardée" : "Sauvegarder la phrase complète comme fiche de révision"}
             style={{
               cursor: (saving || savedText === 'full') ? "default" : "pointer",
               background: savedText === 'full' ? "#27ae60" : "#3498db",
@@ -219,6 +238,7 @@ export function AnalysisPanel({ analysis }) {
 
         {/* --- MOTS INDIVIDUELS --- */}
         <div
+          role="list"
           style={{
             display: "flex",
             flexDirection: "column",
@@ -229,6 +249,7 @@ export function AnalysisPanel({ analysis }) {
           {analysis.breakdown?.map((item, i) => (
             <div
               key={i}
+              role="listitem"
               style={{
                 background: "#f8f9fa",
                 padding: "8px",
@@ -250,6 +271,7 @@ export function AnalysisPanel({ analysis }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   <button
                     onClick={() => playAudio(item.word)}
+                    aria-label={`Écouter la prononciation de ${item.word}`}
                     style={{
                       cursor: "pointer",
                       background: "transparent",
@@ -262,6 +284,7 @@ export function AnalysisPanel({ analysis }) {
                   <button
                     onClick={() => handleSaveWord(item)}
                     disabled={saving || savedText === item.word}
+                    aria-label={savedText === item.word ? "Mot sauvegardé" : `Sauvegarder le mot ${item.word} comme fiche`}
                     style={{
                       cursor: (saving || savedText === item.word) ? "default" : "pointer",
                       background: savedText === item.word ? "#27ae60" : "transparent",
@@ -279,7 +302,7 @@ export function AnalysisPanel({ analysis }) {
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </article>
+    </aside>
   );
 }

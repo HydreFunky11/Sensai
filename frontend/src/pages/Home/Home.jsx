@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getLibrary, importToLibrary, getLibraryFolders, createLibraryFolder, renameLibraryFolder, deleteLibraryFolder, moveMangaToFolder, renameManga, deleteManga } from '../../api/client';
+import { Navbar } from '../../components/Navbar/Navbar';
 
 export default function Home() {
   const [library, setLibrary] = useState([]);
@@ -209,55 +210,62 @@ export default function Home() {
 
   return (
     <div style={styles.container} onClick={closeAllMenus}>
-      <nav style={styles.nav}>
-        <h1 style={styles.logo}>SensAI Library</h1>
-        <div style={{ display: 'flex', gap: '15px' }}>
-          <button onClick={() => navigate('/study')} style={{...styles.navBtn, background: '#27ae60'}}>
-            🧠 Révisions
-          </button>
-          <button onClick={() => fileInputRef.current?.click()} style={{...styles.navBtn, background: '#3498db'}}>
-            {importing ? '⏳ Importation...' : '📥 Importer Ici'}
-          </button>
-          <button onClick={handleLogout} style={{...styles.navBtn, background: '#e74c3c'}}>
-            Déconnexion
-          </button>
+      <Navbar 
+        onImportClick={() => fileInputRef.current?.click()} 
+        importing={importing} 
+      />
           <input 
             type="file" 
             ref={fileInputRef} 
             onChange={handleFileChange} 
             style={{ display: 'none' }} 
             accept="image/*,.pdf" 
+            aria-hidden="true"
           />
-        </div>
-      </nav>
       
       <div style={styles.layout}>
         {/* SIDEBAR DOSSIERS */}
-        <aside style={styles.sidebar}>
+        <aside style={styles.sidebar} aria-label="Liste des dossiers">
           <h3 style={{ color: '#bdc3c7', marginTop: 0 }}>Dossiers</h3>
-          <ul style={styles.folderList}>
+          <ul style={styles.folderList} role="tablist" aria-orientation="vertical">
             <li 
+              role="tab"
+              aria-selected={selectedFolderId === null}
+              tabIndex="0"
               style={{...styles.folderItem, background: selectedFolderId === null ? '#34495e' : 'transparent'}}
               onClick={() => setSelectedFolderId(null)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedFolderId(null); }}
             >
               📁 Tous
             </li>
             {folders.map(f => (
               <li 
                 key={f.id} 
+                role="tab"
+                aria-selected={selectedFolderId === f.id}
+                tabIndex="0"
                 style={{...styles.folderItem, background: selectedFolderId === f.id ? '#34495e' : 'transparent', position: 'relative'}}
                 onClick={() => setSelectedFolderId(f.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedFolderId(f.id); }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>📁 {f.name}</span>
-                  <button onClick={(e) => toggleFolderMenu(e, f.id)} style={styles.folderOptionsBtn}>⋮</button>
+                  <button 
+                    onClick={(e) => toggleFolderMenu(e, f.id)} 
+                    aria-label={`Options pour le dossier ${f.name}`}
+                    aria-haspopup="true"
+                    aria-expanded={activeFolderId === f.id}
+                    style={styles.folderOptionsBtn}
+                  >
+                    ⋮
+                  </button>
                 </div>
                 
                 {/* Menu Options Dossier */}
                 {activeFolderId === f.id && (
-                  <div style={styles.folderOptionsMenu}>
-                    <button onClick={(e) => openRenameFolderModal(e, f)} style={styles.menuItem}>Renommer</button>
-                    <button onClick={(e) => openDeleteFolderModal(e, f)} style={{...styles.menuItem, color: '#e74c3c'}}>Supprimer</button>
+                  <div style={styles.folderOptionsMenu} role="menu">
+                    <button role="menuitem" onClick={(e) => openRenameFolderModal(e, f)} style={styles.menuItem}>Renommer</button>
+                    <button role="menuitem" onClick={(e) => openDeleteFolderModal(e, f)} style={{...styles.menuItem, color: '#e74c3c'}}>Supprimer</button>
                   </div>
                 )}
               </li>
@@ -269,6 +277,7 @@ export default function Home() {
               value={newFolderName}
               onChange={e => setNewFolderName(e.target.value)}
               placeholder="Nouveau dossier..."
+              aria-label="Nom du nouveau dossier"
               style={styles.folderInput}
             />
             <button onClick={handleCreateFolder} style={styles.folderAddBtn}>+ Ajouter</button>
@@ -276,42 +285,61 @@ export default function Home() {
         </aside>
 
         {/* MAIN LIBRARY GRID */}
-        <main style={styles.main}>
+        <main style={styles.main} aria-label="Contenu de la bibliothèque">
           <div style={styles.toolbar}>
              <div style={styles.sortControls}>
-               <span style={{ color: '#bdc3c7', fontSize: '0.9rem' }}>Trier par :</span>
-               <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={styles.sortSelect}>
+               <label htmlFor="sort-select" style={{ color: '#bdc3c7', fontSize: '0.9rem' }}>Trier par :</label>
+               <select 
+                id="sort-select"
+                value={sortBy} 
+                onChange={e => setSortBy(e.target.value)} 
+                style={styles.sortSelect}
+               >
                  <option value="date">Date d'ajout</option>
                  <option value="name">Titre</option>
                </select>
-               <button onClick={() => setOrder(order === 'asc' ? 'desc' : 'asc')} style={styles.sortBtn}>
+               <button 
+                onClick={() => setOrder(order === 'asc' ? 'desc' : 'asc')} 
+                aria-label={`Ordre ${order === 'asc' ? 'décroissant' : 'croissant'}`}
+                style={styles.sortBtn}
+               >
                  {order === 'asc' ? '⬆️ Asc' : '⬇️ Desc'}
                </button>
              </div>
           </div>
           
           {loading ? (
-            <div style={styles.center}>Chargement de la bibliothèque...</div>
+            <div style={styles.center} role="status">Chargement de la bibliothèque...</div>
           ) : library.length === 0 ? (
             <div style={styles.center}>
               <h2>Dossier vide</h2>
               <p>Cliquez sur "Importer Ici" pour ajouter votre premier manga ou document PDF.</p>
             </div>
           ) : (
-            <div style={styles.grid}>
+            <div style={styles.grid} role="list">
               {library.map(manga => (
-                <div key={manga.id} style={styles.mangaCard} onClick={() => openReader(manga)}>
+                <div 
+                  key={manga.id} 
+                  style={styles.mangaCard} 
+                  onClick={() => openReader(manga)}
+                  role="listitem"
+                  tabIndex="0"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openReader(manga); }}
+                >
                   <div style={styles.coverPlaceholder}>
                     {manga.cover_image ? (
-                      <img src={manga.cover_image} alt={manga.title} style={styles.coverImg} loading="lazy" />
+                      <img src={manga.cover_image} alt={`Couverture de ${manga.title}`} style={styles.coverImg} loading="lazy" />
                     ) : (
-                      <span style={styles.coverText}>{manga.title[0].toUpperCase()}</span>
+                      <span style={styles.coverText} aria-hidden="true">{manga.title[0].toUpperCase()}</span>
                     )}
                   </div>
                   <div style={styles.mangaTitleWrapper}>
                     <h3 style={styles.mangaTitle}>{manga.title}</h3>
                     <button 
                       onClick={(e) => toggleMenu(e, manga.id)} 
+                      aria-label={`Options pour ${manga.title}`}
+                      aria-haspopup="true"
+                      aria-expanded={activeMangaId === manga.id}
                       style={styles.optionsBtn}
                     >
                       ⋮
@@ -320,10 +348,10 @@ export default function Home() {
                   
                   {/* Menu Options Manga */}
                   {activeMangaId === manga.id && (
-                    <div style={styles.optionsMenu}>
-                      <button onClick={(e) => openRenameModal(e, manga)} style={styles.menuItem}>Renommer</button>
-                      <button onClick={(e) => openMoveModal(e, manga)} style={styles.menuItem}>Déplacer</button>
-                      <button onClick={(e) => openDeleteModal(e, manga)} style={{...styles.menuItem, color: '#e74c3c'}}>Supprimer</button>
+                    <div style={styles.optionsMenu} role="menu">
+                      <button role="menuitem" onClick={(e) => openRenameModal(e, manga)} style={styles.menuItem}>Renommer</button>
+                      <button role="menuitem" onClick={(e) => openMoveModal(e, manga)} style={styles.menuItem}>Déplacer</button>
+                      <button role="menuitem" onClick={(e) => openDeleteModal(e, manga)} style={{...styles.menuItem, color: '#e74c3c'}}>Supprimer</button>
                     </div>
                   )}
                 </div>
@@ -333,13 +361,14 @@ export default function Home() {
         </main>
       </div>
 
-      {/* MODALS OMITTED FOR BREVITY, REST OF CODE SAME AS BEFORE */}
-      {/* MODAL DE RENOMMAGE MANGA */}
+      {/* MODALS */}
       {renameModal.isOpen && (
-        <div style={styles.modalOverlay} onClick={() => setRenameModal({ isOpen: false, manga: null, title: '' })}>
+        <div style={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="modal-rename-title" onClick={() => setRenameModal({ isOpen: false, manga: null, title: '' })}>
           <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Renommer l'œuvre</h3>
+            <h3 id="modal-rename-title" style={{ marginTop: 0, color: '#2c3e50' }}>Renommer l'œuvre</h3>
+            <label htmlFor="rename-input" style={{ display: 'none' }}>Nouveau titre</label>
             <input 
+              id="rename-input"
               type="text" 
               value={renameModal.title} 
               onChange={e => setRenameModal({ ...renameModal, title: e.target.value })}
@@ -356,13 +385,16 @@ export default function Home() {
 
       {/* MODAL DE DÉPLACEMENT MANGA */}
       {moveModal.isOpen && (
-        <div style={styles.modalOverlay} onClick={() => setMoveModal({ isOpen: false, manga: null, targetFolderId: '' })}>
+        <div style={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="modal-move-title" onClick={() => setMoveModal({ isOpen: false, manga: null, targetFolderId: '' })}>
           <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Déplacer l'œuvre</h3>
-            <p style={{ color: '#7f8c8d', marginBottom: '15px' }}>Où souhaitez-vous ranger "{moveModal.manga?.title}" ?</p>
+            <h3 id="modal-move-title" style={{ marginTop: 0, color: '#2c3e50' }}>Déplacer l'œuvre</h3>
+            <p id="move-desc" style={{ color: '#7f8c8d', marginBottom: '15px' }}>Où souhaitez-vous ranger "{moveModal.manga?.title}" ?</p>
+            <label htmlFor="move-select" style={{ display: 'none' }}>Choisir un dossier</label>
             <select 
+              id="move-select"
               value={moveModal.targetFolderId} 
               onChange={e => setMoveModal({ ...moveModal, targetFolderId: e.target.value })}
+              aria-describedby="move-desc"
               style={styles.modalInput}
             >
               <option value="">📁 Tous (Racine)</option>
@@ -380,14 +412,16 @@ export default function Home() {
 
       {/* MODAL DE SUPPRESSION MANGA */}
       {deleteModal.isOpen && (
-        <div style={styles.modalOverlay} onClick={() => setDeleteModal({ isOpen: false, manga: null })}>
+        <div style={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="modal-delete-title" onClick={() => setDeleteModal({ isOpen: false, manga: null })}>
           <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, color: '#e74c3c' }}>Supprimer l'œuvre</h3>
-            <p style={{ color: '#2c3e50' }}>Voulez-vous vraiment supprimer définitivement <strong>{deleteModal.manga?.title}</strong> ?</p>
-            <p style={{ color: '#7f8c8d', fontSize: '0.85rem', marginBottom: '20px' }}>Cette action supprimera également le fichier du serveur.</p>
+            <h3 id="modal-delete-title" style={{ marginTop: 0, color: '#e74c3c' }}>Supprimer l'œuvre</h3>
+            <div id="delete-desc">
+              <p style={{ color: '#2c3e50' }}>Voulez-vous vraiment supprimer définitivement <strong>{deleteModal.manga?.title}</strong> ?</p>
+              <p style={{ color: '#7f8c8d', fontSize: '0.85rem', marginBottom: '20px' }}>Cette action supprimera également le fichier du serveur.</p>
+            </div>
             <div style={styles.modalActions}>
               <button onClick={() => setDeleteModal({ isOpen: false, manga: null })} style={styles.btnCancel}>Annuler</button>
-              <button onClick={submitDelete} style={{...styles.btnSave, background: '#e74c3c'}}>Supprimer définitivement</button>
+              <button onClick={submitDelete} aria-describedby="delete-desc" style={{...styles.btnSave, background: '#e74c3c'}}>Supprimer définitivement</button>
             </div>
           </div>
         </div>

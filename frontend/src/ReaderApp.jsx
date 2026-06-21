@@ -2,9 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMangaLoader } from "./hooks/useMangaLoader";
 import { useTranslation } from "./hooks/useTranslation";
+import { useEyeTracking } from "./hooks/useEyeTracking";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { Viewer } from "./components/Viewer/Viewer";
 import { AnalysisPanel } from "./components/Analysis/AnalysisPanel";
+import { CalibrationOverlay } from "./components/Calibration/CalibrationOverlay";
 import { getMangaFileBlob } from "./api/client";
 
 function ReaderApp() {
@@ -16,6 +18,28 @@ function ReaderApp() {
   const [crop, setCrop] = useState();
   const [completedCrop, setCompletedCrop] = useState(null);
   const imgRef = useRef(null);
+
+  // Eye Tracking
+  const [eyeTrackingActive, setEyeTrackingActive] = useState(false);
+  const [isCalibrating, setIsCalibrating] = useState(false);
+  const { gazeData, isLoaded, calibratePoint } = useEyeTracking(eyeTrackingActive);
+
+  // Écouter le clignement pour traduire
+  useEffect(() => {
+    const handleBlink = () => {
+      console.log("😉 Clignement détecté !");
+      // On cherche l'élément sous le regard au moment du clignement
+      const element = document.elementFromPoint(gazeData.x, gazeData.y);
+      // Si c'est une bulle (bouton dans Viewer), on simule un clic
+      if (element && element.tagName === 'BUTTON' && element.getAttribute('aria-label')?.includes('Zone de texte')) {
+        console.log("🎯 Cible trouvée sous le regard, lancement de la traduction...");
+        element.click();
+      }
+    };
+
+    window.addEventListener('eye-blink', handleBlink);
+    return () => window.removeEventListener('eye-blink', handleBlink);
+  }, [gazeData, eyeTrackingActive]);
 
   // Charger le manga si passé depuis la bibliothèque
   useEffect(() => {
@@ -52,6 +76,7 @@ function ReaderApp() {
     >
       <button 
         onClick={() => navigate('/home')} 
+        aria-label="Retourner à la bibliothèque"
         style={{
           position: 'absolute', top: 10, left: 10, zIndex: 100,
           background: '#e74c3c', color: 'white', border: 'none', 
@@ -64,6 +89,8 @@ function ReaderApp() {
       {/* Overlay de Chargement */}
       {isLoading && (
         <div
+          role="status"
+          aria-live="polite"
           style={{
             position: "absolute",
             top: 0,
@@ -110,15 +137,83 @@ function ReaderApp() {
         onPageChange={handlePageChange}
       />
 
-      <div
+      <main
         style={{
           flex: 1,
           display: "flex",
           flexDirection: "column",
           background: "#ecf0f1",
           overflow: "hidden",
+          position: "relative"
         }}
       >
+        {isCalibrating && (
+          <CalibrationOverlay 
+            onComplete={() => setIsCalibrating(false)} 
+            calibratePoint={calibratePoint} 
+            gazeData={gazeData}
+          />
+        )}
+
+        {/* Custom Gaze Cursor (Optimisé GPU - MediaPipe) */}
+        {eyeTrackingActive && !isCalibrating && (
+          <div
+            id="custom-gaze-dot"
+            style={{
+              display: 'none', // Sera affiché par useEyeTracking
+              position: 'fixed',
+              left: '-7.5px', // Centré (15px / 2)
+              top: '-7.5px',
+              width: '15px',
+              height: '15px',
+              backgroundColor: 'red',
+              borderRadius: '50%',
+              pointerEvents: 'none', // Ne bloque pas les clics
+              zIndex: 99999,
+              boxShadow: '0 0 10px rgba(255, 0, 0, 0.8)',
+              willChange: 'transform' // Prévient le navigateur pour l'accélération matérielle
+            }}
+          />
+        )}
+
+        {/* Toggle Eye Tracking */}
+        <div style={{ 
+          position: 'absolute', top: '10px', right: '10px', zIndex: 100,
+          display: 'flex', gap: '10px'
+        }}>
+           <button 
+            onClick={() => {
+              if (!eyeTrackingActive) {
+                setEyeTrackingActive(true);
+                setIsCalibrating(true);
+              } else {
+                setEyeTrackingActive(false);
+                setIsCalibrating(false);
+              }
+            }}
+            style={{
+              padding: '8px 12px', borderRadius: '20px', border: 'none',
+              background: eyeTrackingActive ? '#27ae60' : '#95a5a6',
+              color: 'white', cursor: 'pointer', fontWeight: 'bold',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+            }}
+          >
+            {eyeTrackingActive ? '👁️ Eye-Tracking ON' : '👁️ Activer Eye-Tracking'}
+          </button>
+          {eyeTrackingActive && !isCalibrating && (
+             <button 
+             onClick={() => setIsCalibrating(true)}
+             style={{
+               padding: '8px 12px', borderRadius: '20px', border: 'none',
+               background: '#3498db', color: 'white', cursor: 'pointer', fontWeight: 'bold',
+               boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+             }}
+           >
+             Recalibrer
+           </button>
+          )}
+        </div>
+
         {pages.length > 0 ? (
           <div
             style={{
@@ -134,9 +229,14 @@ function ReaderApp() {
               setCrop={setCrop}
               setCompletedCrop={setCompletedCrop}
               imgRef={imgRef}
-              onAnalyze={() => translateSelection(imgRef.current, completedCrop)}
+              onAnalyze={(specificCrop) => {
+                const finalCrop = (specificCrop && specificCrop.width) ? specificCrop : completedCrop;
+                const docName = location.state?.manga?.title || "Fichier local";
+                translateSelection(imgRef.current, finalCrop, docName, currentIndex + 1);
+              }}
               loading={translating}
               hasSelection={!!completedCrop}
+              gazeData={gazeData}
             />
 
             <AnalysisPanel analysis={analysis} />
@@ -156,7 +256,7 @@ function ReaderApp() {
             <p>Ouvrez un document depuis la bibliothèque ou importez-en un avec le panneau de gauche</p>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

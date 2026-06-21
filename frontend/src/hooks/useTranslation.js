@@ -5,7 +5,7 @@ export function useTranslation() {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const translateSelection = async (imgRef, completedCrop) => {
+  const translateSelection = async (imgRef, completedCrop, documentName = "", page = 0) => {
     if (!completedCrop || !imgRef) return;
 
     setLoading(true);
@@ -13,36 +13,50 @@ export function useTranslation() {
 
     try {
       const blob = await getCroppedImg(imgRef, completedCrop);
-      const data = await analyzeImage(blob);
+      if (!blob) {
+        throw new Error("Impossible de générer l'image de la sélection (recadrage vide ou invalide)");
+      }
+      
+      const coords = {
+        x: Math.round(completedCrop.x),
+        y: Math.round(completedCrop.y),
+        width: Math.round(completedCrop.width),
+        height: Math.round(completedCrop.height)
+      };
+
+      const data = await analyzeImage(blob, documentName, page, coords);
       setAnalysis(data);
     } catch (error) {
-      console.error(error);
-      alert('Erreur analyse');
+      console.error("Erreur lors de la traduction :", error);
+      alert(error.message || 'Erreur analyse');
     } finally {
       setLoading(false);
     }
   };
 
   async function getCroppedImg(image, crop) {
+    if (!crop.width || !crop.height) return null;
+
     const canvas = document.createElement('canvas');
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
+    // On utilise directement les coordonnées (supposées naturelles)
     canvas.width = crop.width;
     canvas.height = crop.height;
+    
     const ctx = canvas.getContext('2d');
     ctx.drawImage(
       image,
-      crop.x * scaleX,
-      crop.y * scaleY,
-      crop.width * scaleX,
-      crop.height * scaleY,
+      crop.x,
+      crop.y,
+      crop.width,
+      crop.height,
       0,
       0,
       crop.width,
       crop.height
     );
+    
     return new Promise((resolve) =>
-      canvas.toBlob((blob) => resolve(blob), 'image/jpeg')
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95)
     );
   }
 

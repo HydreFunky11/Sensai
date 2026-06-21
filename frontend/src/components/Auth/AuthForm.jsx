@@ -17,32 +17,47 @@ export default function AuthForm({
 }) {
   return (
     <div style={styles.container}>
-      <form onSubmit={onSubmit} style={styles.form}>
-        <h2 style={styles.title}>{title}</h2>
+      <form onSubmit={onSubmit} style={styles.form} aria-labelledby="form-title">
+        <h2 id="form-title" style={styles.title}>{title}</h2>
         <p style={styles.subtitle}>{subtitle}</p>
         
-        {error && <div style={styles.error}>{error}</div>}
+        {error && (
+          <div 
+            id="auth-error" 
+            role="alert" 
+            aria-live="assertive" 
+            style={styles.error}
+          >
+            {error}
+          </div>
+        )}
         
         <div style={styles.inputGroup}>
-          <label style={styles.label}>Adresse Email</label>
+          <label htmlFor="email-input" style={styles.label}>Adresse Email</label>
           <input
+            id="email-input"
             type="email"
             placeholder="exemple@mail.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            aria-invalid={!!error}
+            aria-describedby={error ? "auth-error" : undefined}
             style={styles.input}
           />
         </div>
 
         <div style={styles.inputGroup}>
-          <label style={styles.label}>Mot de passe</label>
+          <label htmlFor="password-input" style={styles.label}>Mot de passe</label>
           <input
+            id="password-input"
             type="password"
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            aria-invalid={!!error}
+            aria-describedby={error ? "auth-error" : undefined}
             style={styles.input}
           />
         </div>
