@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { analyzeImage } from '../api/client';
+import { toast } from 'react-hot-toast';
 
 export function useTranslation() {
   const [analysis, setAnalysis] = useState(null);
@@ -28,7 +29,7 @@ export function useTranslation() {
       setAnalysis(data);
     } catch (error) {
       console.error("Erreur lors de la traduction :", error);
-      alert(error.message || 'Erreur analyse');
+      toast.error(error.message || 'Erreur analyse');
     } finally {
       setLoading(false);
     }

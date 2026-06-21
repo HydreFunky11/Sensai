@@ -10,6 +10,12 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Stripe payment integrations
+    stripe_customer_id = Column(String, unique=True, index=True, nullable=True)
+    is_premium = Column(Boolean, default=False)
+    subscription_id = Column(String, nullable=True)
+    subscription_end_at = Column(DateTime, nullable=True)
 
     mangas = relationship("Manga", back_populates="owner")
     decks = relationship("Deck", back_populates="owner")
@@ -124,3 +130,11 @@ class DeckReviewLog(Base):
     deck_id = Column(Integer, ForeignKey("decks.id"), index=True)
     is_free_review = Column(Boolean, default=False)
     reviewed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class AnalysisLog(Base):
+    """Journal d'utilisation des requêtes d'analyse pour limiter les utilisateurs gratuits"""
+    __tablename__ = "analysis_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

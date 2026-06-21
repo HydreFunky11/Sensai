@@ -1,10 +1,38 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getMe, createCheckoutSession } from '../../api/client';
+import { toast } from 'react-hot-toast';
 
 export function Navbar({ onImportClick, importing }) {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
+  const [isPremium, setIsPremium] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+
+  useEffect(() => {
+    async function checkPremiumStatus() {
+      try {
+        const userData = await getMe();
+        setIsPremium(userData.is_premium);
+      } catch (err) {
+        console.error("Erreur statut premium navbar:", err);
+      }
+    }
+    checkPremiumStatus();
+  }, [currentPath]);
+
+  const handleSubscribe = async () => {
+    setSubscribing(true);
+    try {
+      const data = await createCheckoutSession();
+      window.location.href = data.url;
+    } catch (err) {
+      toast.error(err.message || "Erreur de connexion avec Stripe");
+    } finally {
+      setSubscribing(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -51,6 +79,18 @@ export function Navbar({ onImportClick, importing }) {
         >
           📊 Stats
         </button>
+        <button 
+          onClick={() => navigate('/profile')} 
+          aria-label="Accéder au profil"
+          style={{
+            ...styles.navBtn, 
+            background: currentPath === '/profile' ? '#e67e22' : 'transparent',
+            border: currentPath === '/profile' ? 'none' : '1px solid #444',
+            color: currentPath === '/profile' ? 'white' : '#cbd5e1'
+          }}
+        >
+          👤 Profil
+        </button>
 
         {currentPath === '/' && onImportClick && (
           <button 
@@ -60,6 +100,43 @@ export function Navbar({ onImportClick, importing }) {
           >
             {importing ? '⏳ Importation...' : '📥 Importer'}
           </button>
+        )}
+
+        {/* Stripe Premium subscribe or active indicator */}
+        {!isPremium ? (
+          <button 
+            onClick={handleSubscribe} 
+            disabled={subscribing}
+            aria-label="Devenir Premium"
+            style={{
+              ...styles.navBtn, 
+              background: 'linear-gradient(135deg, #a855f7, #ec4899)', 
+              border: 'none', 
+              color: 'white',
+              boxShadow: '0 2px 8px rgba(168, 85, 247, 0.3)'
+            }}
+          >
+            {subscribing ? '⏳...' : '👑 S\'abonner'}
+          </button>
+        ) : (
+          <span 
+            title="Votre abonnement SensAI Premium est actif !"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              background: 'rgba(192, 132, 252, 0.1)',
+              border: '1px solid #c084fc',
+              color: '#e9d5ff',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontWeight: '700',
+              fontSize: '0.85rem',
+              height: '34px',
+              boxSizing: 'border-box'
+            }}
+          >
+            👑 Premium
+          </span>
         )}
 
         <button 
@@ -111,6 +188,8 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    outline: 'none'
+    outline: 'none',
+    height: '34px',
+    boxSizing: 'border-box'
   }
 };

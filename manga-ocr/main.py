@@ -4,6 +4,7 @@ from api.routes import router as general_router
 from api.auth import router as auth_router
 from api.cards import router as cards_router
 from api.library import router as library_router
+from api.payments import router as payments_router
 from db.database import engine
 from db import models
 
@@ -31,6 +32,7 @@ app.include_router(auth_router)
 app.include_router(general_router)
 app.include_router(cards_router)
 app.include_router(library_router)
+app.include_router(payments_router)
 
 if __name__ == "__main__":
     import uvicorn

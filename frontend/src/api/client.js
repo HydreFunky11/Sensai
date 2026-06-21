@@ -15,11 +15,15 @@ export async function analyzeImage(blob, documentName = "", page = 0, boxCoordin
 
   const response = await fetch(`${BASE_URL}/analyze`, {
     method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+    },
     body: formData,
   });
 
   if (!response.ok) {
-    throw new Error("Erreur lors de l'analyse");
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de l'analyse");
   }
 
   return response.json();
@@ -65,7 +69,8 @@ export async function createFlashcard(cardData) {
   });
 
   if (!response.ok) {
-    throw new Error("Erreur lors de la création de la carte");
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de la création de la carte");
   }
   return response.json();
 }
@@ -88,7 +93,10 @@ export async function createDeck(title) {
     },
     body: JSON.stringify({ title }),
   });
-  if (!response.ok) throw new Error("Erreur lors de la création du dossier");
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de la création du dossier");
+  }
   return response.json();
 }
 
@@ -184,6 +192,72 @@ export async function getReviewStats() {
   });
   if (!response.ok) {
     throw new Error("Erreur lors de la récupération des statistiques");
+  }
+  return response.json();
+}
+
+export async function getMe() {
+  const response = await fetch(`${BASE_URL}/auth/me`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Erreur lors de la récupération du profil");
+  }
+  return response.json();
+}
+
+export async function createCheckoutSession() {
+  const response = await fetch(`${BASE_URL}/payments/create-checkout-session`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de la création de la session de paiement");
+  }
+  return response.json();
+}
+
+export async function createPortalSession() {
+  const response = await fetch(`${BASE_URL}/payments/create-portal-session`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de la création du portail client");
+  }
+  return response.json();
+}
+
+export async function syncSubscription(sessionId) {
+  const response = await fetch(`${BASE_URL}/payments/sync-subscription`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de la synchronisation de l'abonnement");
+  }
+  return response.json();
+}
+
+export async function updateProfile(profileData) {
+  const response = await fetch(`${BASE_URL}/auth/me`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(profileData),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de la mise à jour du profil");
   }
   return response.json();
 }

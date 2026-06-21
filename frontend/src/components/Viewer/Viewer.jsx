@@ -73,48 +73,27 @@ export function Viewer({ pageSrc, crop, setCrop, setCompletedCrop, imgRef, onAna
   };
 
   return (
-    <section
-      aria-label="Visionneuse de document"
-      style={{
-        flex: 2,
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflow: "hidden",
-        position: "relative",
-      }}
-    >
+    <section aria-label="Visionneuse de document" className="viewer-section">
       {detecting && (
         <div 
           role="status"
           aria-live="polite"
           style={{ 
-            position: 'absolute', top: '10px', right: '10px', 
-            background: 'rgba(142, 68, 173, 0.9)', color: 'white', 
-            padding: '5px 10px', borderRadius: '20px', fontSize: '0.85rem', zIndex: 100,
-            display: 'flex', alignItems: 'center', gap: '5px'
+            position: 'absolute', top: '15px', right: '25px', 
+            background: 'rgba(139, 92, 246, 0.9)', color: 'white', 
+            padding: '6px 14px', borderRadius: '20px', fontSize: '0.8rem', zIndex: 100,
+            display: 'flex', alignItems: 'center', gap: '6px',
+            boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+            fontWeight: 600
           }}
         >
-          <span className="spinner" aria-hidden="true">↻</span> Détection auto...
+          <span className="spinner" aria-hidden="true">↻</span> Détection automatique...
           <style>{`@keyframes spin { 100% { transform: rotate(360deg); } } .spinner { display: inline-block; animation: spin 1s linear infinite; }`}</style>
         </div>
       )}
 
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "white",
-          padding: "10px",
-          borderRadius: "5px",
-          boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-          position: "relative" // Important pour les overlays
-        }}
-      >
-        <div style={{ position: 'relative', display: 'inline-block' }}>
+      <div className="viewer-container">
+        <div style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', maxHeight: '100%' }}>
           <ReactCrop
             crop={crop}
             onChange={(c) => setCrop(c)}
@@ -141,10 +120,12 @@ export function Viewer({ pageSrc, crop, setCrop, setCompletedCrop, imgRef, onAna
               src={pageSrc}
               alt="Page du document à analyser"
               style={{
-                maxHeight: "calc(100vh - 200px)",
+                maxHeight: "calc(100vh - 180px)",
                 maxWidth: "100%",
                 objectFit: "contain",
                 display: "block",
+                borderRadius: '4px',
+                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.5)'
               }}
             />
           </ReactCrop>
@@ -155,7 +136,7 @@ export function Viewer({ pageSrc, crop, setCrop, setCompletedCrop, imgRef, onAna
             if (!img) return null;
             const scaleX = img.width / img.naturalWidth;
             const scaleY = img.height / img.naturalHeight;
-            
+
             // Calcul de la position absolue de la bulle à l'écran
             const rect = img.getBoundingClientRect();
             const absLeft = rect.left + (box.x * scaleX);
@@ -167,29 +148,21 @@ export function Viewer({ pageSrc, crop, setCrop, setCompletedCrop, imgRef, onAna
             const isGazedAt = gazeData && 
                               gazeData.x >= absLeft && gazeData.x <= absRight &&
                               gazeData.y >= absTop && gazeData.y <= absBottom;
-
+            
             return (
               <button
                 key={index}
                 onClick={() => handleBubbleClick(box)}
                 aria-label={`Zone de texte détectée ${index + 1}`}
+                className="detected-bubble-btn"
                 style={{
-                  position: 'absolute',
                   left: `${box.x * scaleX}px`,
                   top: `${box.y * scaleY}px`,
                   width: `${box.width * scaleX}px`,
                   height: `${box.height * scaleY}px`,
-                  border: isGazedAt ? '3px solid #f1c40f' : '2px solid #3498db',
-                  backgroundColor: isGazedAt ? 'rgba(241, 196, 15, 0.4)' : 'rgba(52, 152, 219, 0.2)',
-                  boxShadow: isGazedAt ? '0 0 15px #f1c40f' : 'none',
-                  cursor: 'pointer',
-                  padding: 0,
-                  zIndex: 10,
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(52, 152, 219, 0.5)'}
-                onMouseLeave={(e) => {
-                   if (!isGazedAt) e.target.style.backgroundColor = 'rgba(52, 152, 219, 0.2)';
+                  border: isGazedAt ? '3px solid #ef4444' : undefined,
+                  backgroundColor: isGazedAt ? 'rgba(239, 68, 68, 0.35)' : undefined,
+                  boxShadow: isGazedAt ? '0 0 15px rgba(239, 68, 68, 0.7)' : undefined,
                 }}
               />
             );
@@ -202,18 +175,7 @@ export function Viewer({ pageSrc, crop, setCrop, setCompletedCrop, imgRef, onAna
           onClick={onAnalyze}
           disabled={loading}
           aria-label={loading ? "Analyse en cours" : "Lancer la traduction de la zone sélectionnée"}
-          style={{
-            marginTop: "10px",
-            padding: "15px",
-            width: "100%",
-            fontSize: "18px",
-            background: "#e74c3c",
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-            borderRadius: "5px",
-            flexShrink: 0,
-          }}
+          className="translate-btn-overlay"
         >
           {loading ? "Analyse en cours..." : "Traduire la sélection"}
         </button>
