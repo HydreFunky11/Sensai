@@ -6,6 +6,7 @@ import Home from './pages/Home/Home';
 import Study from './pages/Study/Study';
 import Stats from './pages/Stats/Stats';
 import Profile from './pages/Profile/Profile';
+import Alphabets from './pages/Alphabets/Alphabets';
 import ReaderApp from './ReaderApp'; // On renomme l'ancien App.jsx
 
 const ProtectedRoute = ({ children }) => {
@@ -59,6 +60,12 @@ function App() {
         <Route path="/reader" element={
           <ProtectedRoute>
             <ReaderApp />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/alphabets" element={
+          <ProtectedRoute>
+            <Alphabets />
           </ProtectedRoute>
         } />
 
