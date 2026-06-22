@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Navbar } from '../../components/Navbar/Navbar';
 import { HIRAGANA, KATAKANA, KANJI_N5 } from './alphabetData';
 import { toast } from 'react-hot-toast';
@@ -6,11 +6,20 @@ import { toast } from 'react-hot-toast';
 function Alphabets() {
   const [activeTab, setActiveTab] = useState('hiragana'); // 'hiragana', 'katakana', 'kanji'
   const [selectedChar, setSelectedChar] = useState(null);
+  const [mode, setMode] = useState('guided'); // 'free' or 'guided'
   const [isDrawing, setIsDrawing] = useState(false);
+
+  // États pour le mode Guidé (KanjiVG)
+  const [loadingSVG, setLoadingSVG] = useState(false);
+  const [strokesData, setStrokesData] = useState([]); // Tableau de tableaux de {x, y}
+  const [currentStrokeIndex, setCurrentStrokeIndex] = useState(0);
+  const [completedStrokes, setCompletedStrokes] = useState([]); // Liste des tracés validés
+  const [svgUnavailable, setSvgUnavailable] = useState(false);
 
   const canvasRef = useRef(null);
   const lastX = useRef(0);
   const lastY = useRef(0);
+  const userStrokePoints = useRef([]);
 
   // Charger le premier caractère par défaut à l'ouverture ou au changement d'onglet
   useEffect(() => {
@@ -23,53 +32,121 @@ function Alphabets() {
     }
   }, [activeTab]);
 
-  // Dessiner le guide dans le canvas à chaque changement de sélection
+  // Charger l'ordre des tracés en mode guidé
+  const fetchStrokeOrder = async (char) => {
+    if (!char) return;
+    setLoadingSVG(true);
+    setSvgUnavailable(false);
+    setCompletedStrokes([]);
+    setCurrentStrokeIndex(0);
+    setStrokesData([]);
+    
+    try {
+      const codePoint = char.codePointAt(0);
+      const hex = codePoint.toString(16).padStart(5, '0');
+      const url = `https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/${hex}.svg`;
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("SVG introuvable dans la base KanjiVG");
+      }
+      
+      const text = await response.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'image/svg+xml');
+      const paths = Array.from(doc.querySelectorAll('path'));
+      
+      const parsedStrokes = paths.map(path => {
+        const d = path.getAttribute('d');
+        return getPathPoints(d, 25); // Échantillonner 25 points par trait
+      });
+      
+      setStrokesData(parsedStrokes);
+      console.log(`✅ ${parsedStrokes.length} tracés chargés pour ${char}`);
+    } catch (err) {
+      console.warn("Impossible de charger le tracé KanjiVG:", err);
+      setSvgUnavailable(true);
+      // Fallback automatique en mode libre en cas d'erreur de chargement
+      setMode('free');
+      toast.error("Modèle de tracé guidé indisponible. Passage en écriture libre.");
+    } finally {
+      setLoadingSVG(false);
+    }
+  };
+
+  // Convertir le d d'un chemin SVG en points échantillonnés et mis à l'échelle
+  const getPathPoints = (pathD, sampleCount = 25) => {
+    const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    pathEl.setAttribute('d', pathD);
+    const totalLength = pathEl.getTotalLength();
+    const points = [];
+    const canvasWidth = 300; // Largeur fixe interne
+    const scale = canvasWidth / 109; // Grille d'origine de KanjiVG (109x109)
+
+    for (let i = 0; i <= sampleCount; i++) {
+      const distance = (i / sampleCount) * totalLength;
+      const pt = pathEl.getPointAtLength(distance);
+      points.push({ 
+        x: pt.x * scale, 
+        y: pt.y * scale 
+      });
+    }
+    return points;
+  };
+
+  // Gérer le changement de caractère ou de mode
   useEffect(() => {
     if (selectedChar && selectedChar.char) {
-      // Un court délai permet au DOM du canvas de s'initialiser
-      const timer = setTimeout(() => {
-        drawGuide(selectedChar.char);
-      }, 50);
-      return () => clearTimeout(timer);
+      if (mode === 'guided') {
+        fetchStrokeOrder(selectedChar.char);
+      } else {
+        const timer = setTimeout(() => {
+          drawFreeGuide(selectedChar.char);
+        }, 50);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [selectedChar]);
+  }, [selectedChar, mode]);
+
+  // Redessiner le canvas guidé lorsque l'état progresse
+  useEffect(() => {
+    if (mode === 'guided' && strokesData.length > 0) {
+      drawGuidedGuide();
+    }
+  }, [strokesData, currentStrokeIndex, completedStrokes, mode]);
 
   // Prononciation par synthèse vocale du navigateur
   const playPronunciation = (char) => {
     if (!char) return;
     if ('speechSynthesis' in window) {
-      // Annuler toute synthèse en cours pour éviter la file d'attente
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(char);
       utterance.lang = 'ja-JP';
-      utterance.rate = 0.85; // Légèrement plus lent pour une meilleure écoute
+      utterance.rate = 0.85;
       window.speechSynthesis.speak(utterance);
     } else {
       toast.error("Votre navigateur ne prend pas en charge la prononciation vocale.");
     }
   };
 
-  // Dessiner la grille de repères et le caractère d'arrière-plan
-  const drawGuide = (char) => {
+  // Dessin du filigrane d'aide en mode écriture libre
+  const drawFreeGuide = (char) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
-    // Nettoyage complet
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Lignes de guidage (Dashed)
+    // Grille de repères
     ctx.strokeStyle = '#27272a';
     ctx.lineWidth = 1;
     ctx.setLineDash([5, 5]);
     
-    // Ligne centrale horizontale
     ctx.beginPath();
     ctx.moveTo(0, canvas.height / 2);
     ctx.lineTo(canvas.width, canvas.height / 2);
     ctx.stroke();
     
-    // Ligne centrale verticale
     ctx.beginPath();
     ctx.moveTo(canvas.width / 2, 0);
     ctx.lineTo(canvas.width / 2, canvas.height);
@@ -77,15 +154,89 @@ function Alphabets() {
     
     ctx.setLineDash([]); // Reset dash
 
-    // Dessiner le caractère en filigrane (gris clair)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.font = 'bold 160px sans-serif';
+    // Modèle
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.font = 'bold 180px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(char, canvas.width / 2, canvas.height / 2);
   };
 
-  // Gestionnaires de tracé sur Canvas
+  // Dessin du canevas en mode guidé pas-à-pas
+  const drawGuidedGuide = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Grille de repères
+    ctx.strokeStyle = '#27272a';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height / 2);
+    ctx.lineTo(canvas.width, canvas.height / 2);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 0);
+    ctx.lineTo(canvas.width / 2, canvas.height);
+    ctx.stroke();
+    
+    ctx.setLineDash([]); // Reset
+
+    // 1. Dessiner les traits futurs en filigrane (gris clair)
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    strokesData.forEach((stroke, idx) => {
+      if (idx >= currentStrokeIndex) {
+        ctx.strokeStyle = idx === currentStrokeIndex ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        ctx.moveTo(stroke[0].x, stroke[0].y);
+        for (let i = 1; i < stroke.length; i++) {
+          ctx.lineTo(stroke[i].x, stroke[i].y);
+        }
+        ctx.stroke();
+      }
+    });
+
+    // 2. Dessiner les traits déjà validés en vert néon
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 10;
+    completedStrokes.forEach(strokePoints => {
+      ctx.beginPath();
+      ctx.moveTo(strokePoints[0].x, strokePoints[0].y);
+      for (let i = 1; i < strokePoints.length; i++) {
+        ctx.lineTo(strokePoints[i].x, strokePoints[i].y);
+      }
+      ctx.stroke();
+    });
+
+    // 3. Dessiner le badge indicateur de début de tracé du trait en cours
+    if (currentStrokeIndex < strokesData.length && strokesData[currentStrokeIndex]) {
+      const activeStroke = strokesData[currentStrokeIndex];
+      const startPt = activeStroke[0];
+      
+      // Petit rond bleu
+      ctx.fillStyle = '#3b82f6';
+      ctx.beginPath();
+      ctx.arc(startPt.x - 14, startPt.y - 14, 11, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Numéro
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(currentStrokeIndex + 1, startPt.x - 14, startPt.y - 14);
+    }
+  };
+
+  // Coordonnées du curseur/doigt
   const getCoordinates = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -94,7 +245,6 @@ function Alphabets() {
     const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
     const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
     
-    // Calculer les coordonnées adaptées aux dimensions du canvas interne
     const x = ((clientX - rect.left) / rect.width) * canvas.width;
     const y = ((clientY - rect.top) / rect.height) * canvas.height;
     
@@ -107,6 +257,8 @@ function Alphabets() {
     setIsDrawing(true);
     lastX.current = x;
     lastY.current = y;
+    
+    userStrokePoints.current = [{ x, y }];
   };
 
   const draw = (e) => {
@@ -117,7 +269,8 @@ function Alphabets() {
     const ctx = canvas.getContext('2d');
     const { x, y } = getCoordinates(e);
 
-    ctx.strokeStyle = '#8b5cf6'; // Violet de notre charte graphique
+    // Dessiner en violet néon (tracé temporaire utilisateur)
+    ctx.strokeStyle = '#8b5cf6';
     ctx.lineWidth = 10;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -129,20 +282,80 @@ function Alphabets() {
 
     lastX.current = x;
     lastY.current = y;
+    
+    userStrokePoints.current.push({ x, y });
   };
 
   const stopDrawing = () => {
+    if (!isDrawing) return;
     setIsDrawing(false);
+
+    if (mode === 'guided') {
+      validateUserStroke();
+    }
   };
 
-  const clearCanvas = () => {
-    if (selectedChar) {
-      drawGuide(selectedChar.char);
+  // Algorithme de validation avec 30%+ de tolérance
+  const validateUserStroke = () => {
+    const pts = userStrokePoints.current;
+    if (pts.length < 5) {
+      // Trop court : tracé annulé et réinitialisé
+      drawGuidedGuide();
+      return;
+    }
+
+    if (currentStrokeIndex >= strokesData.length) return;
+
+    const targetStroke = strokesData[currentStrokeIndex];
+    
+    const getDistance = (p1, p2) => Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+    
+    const startDist = getDistance(pts[0], targetStroke[0]);
+    const endDist = getDistance(pts[pts.length - 1], targetStroke[targetStroke.length - 1]);
+    const midDist = getDistance(
+      pts[Math.floor(pts.length / 2)], 
+      targetStroke[Math.floor(targetStroke.length / 2)]
+    );
+
+    // Seuil de validation : ~95px sur un canevas de 300px (marge d'erreur de plus de 30%)
+    const threshold = 95;
+
+    console.log(`[Validation trait ${currentStrokeIndex + 1}] Décalages:`, { Début: startDist, Milieu: midDist, Fin: endDist });
+
+    if (startDist < threshold && endDist < threshold && midDist < threshold) {
+      // Trait valide
+      toast.success(`Trait ${currentStrokeIndex + 1} validé !`, { id: 'stroke-toast', duration: 800 });
+      
+      const newCompleted = [...completedStrokes, targetStroke];
+      setCompletedStrokes(newCompleted);
+      
+      const nextIndex = currentStrokeIndex + 1;
+      setCurrentStrokeIndex(nextIndex);
+      
+      // Tout le caractère a été complété !
+      if (nextIndex >= strokesData.length) {
+        toast.success(`🎉 Excellent ! Écriture complétée avec succès !`, { duration: 2500 });
+        playPronunciation(selectedChar.char);
+      }
+    } else {
+      // Erreur de sens ou de tracé
+      toast.error("Tracé incorrect. Suivez le guide et respectez le sens !", { id: 'stroke-toast', duration: 1200 });
+      // Efface le tracé utilisateur erroné et redessine le guide
+      drawGuidedGuide();
+    }
+  };
+
+  const resetWriting = () => {
+    if (mode === 'guided') {
+      setCompletedStrokes([]);
+      setCurrentStrokeIndex(0);
+    } else if (selectedChar) {
+      drawFreeGuide(selectedChar.char);
     }
   };
 
   const handleCharClick = (charObj) => {
-    if (!charObj.char) return; // Ignorer les cases vides de la grille
+    if (!charObj.char) return; // Case vide de la grille
     setSelectedChar(charObj);
   };
 
@@ -165,7 +378,6 @@ function Alphabets() {
         }}
       >
         {charList.map((charObj, index) => {
-          // Si case vide (utilisé pour aligner la grille de kana)
           if (!charObj.char) {
             return <div key={`empty-${index}`} style={{ aspectRatio: '1/1' }} />;
           }
@@ -227,7 +439,6 @@ function Alphabets() {
         {/* Panneau gauche : Sélections & Grilles */}
         <section style={{ flex: 1.3, display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
           
-          {/* Menu d'onglets premium */}
           <div style={{ display: 'flex', background: '#111113', borderRadius: '12px', padding: '6px', border: '1px solid #1f1f23', width: 'fit-content' }}>
             {['hiragana', 'katakana', 'kanji'].map((tab) => (
               <button
@@ -251,7 +462,6 @@ function Alphabets() {
             ))}
           </div>
 
-          {/* Grille des caractères */}
           {renderGrid()}
         </section>
 
@@ -320,7 +530,7 @@ function Alphabets() {
                 </span>
               </div>
 
-              {/* Sens (Pour Kanji) */}
+              {/* Signification (Kanji) */}
               {selectedChar.meaning && (
                 <div className="analysis-card" style={{ padding: '12px' }}>
                   <div style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, marginBottom: '4px' }}>Signification</div>
@@ -328,18 +538,58 @@ function Alphabets() {
                 </div>
               )}
 
-              {/* Zone d'écriture interactive (Tracé Libre + Guide de repères) */}
+              {/* Zone d'écriture interactive */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 600 }}>✍️ Entraînement au tracé</span>
+                  
+                  {/* Sélecteur de mode d'écriture */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 600 }}>✍️ Écriture</span>
+                    <div style={{ display: 'flex', background: '#18181b', borderRadius: '8px', padding: '2px', border: '1px solid #27272a' }}>
+                      <button
+                        onClick={() => setMode('guided')}
+                        disabled={svgUnavailable}
+                        style={{
+                          background: mode === 'guided' ? '#8b5cf6' : 'transparent',
+                          color: mode === 'guided' ? 'white' : '#94a3b8',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '4px 10px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: svgUnavailable ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        Guidé
+                      </button>
+                      <button
+                        onClick={() => setMode('free')}
+                        style={{
+                          background: mode === 'free' ? '#8b5cf6' : 'transparent',
+                          color: mode === 'free' ? 'white' : '#94a3b8',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '4px 10px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        Libre
+                      </button>
+                    </div>
+                  </div>
+
                   <button
-                    onClick={clearCanvas}
+                    onClick={resetWriting}
                     style={{
                       background: 'transparent',
                       color: '#f87171',
                       border: '1px solid rgba(248, 113, 113, 0.2)',
                       padding: '4px 10px',
-                      borderRadius: '6px',
+                      borderRadius: '8px',
                       cursor: 'pointer',
                       fontSize: '0.75rem',
                       fontWeight: 600,
@@ -348,7 +598,7 @@ function Alphabets() {
                     onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(248, 113, 113, 0.1)'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    Effacer
+                    {mode === 'guided' ? 'Recommencer' : 'Effacer'}
                   </button>
                 </div>
 
@@ -359,36 +609,46 @@ function Alphabets() {
                     alignItems: 'center', 
                     justifyContent: 'center', 
                     background: '#09090b',
-                    borderRadius: '12px',
+                    borderRadius: '16px',
                     border: '1px dashed #27272a',
                     position: 'relative',
                     overflow: 'hidden',
-                    minHeight: '220px'
+                    minHeight: '300px'
                   }}
                 >
-                  <canvas
-                    ref={canvasRef}
-                    width={300}
-                    height={300}
-                    onMouseDown={startDrawing}
-                    onMouseMove={draw}
-                    onMouseUp={stopDrawing}
-                    onMouseLeave={stopDrawing}
-                    onTouchStart={startDrawing}
-                    onTouchMove={draw}
-                    onTouchEnd={stopDrawing}
-                    style={{ 
-                      display: 'block', 
-                      cursor: 'crosshair',
-                      width: '100%',
-                      height: '100%',
-                      maxHeight: '300px',
-                      maxWidth: '300px',
-                    }}
-                  />
+                  {loadingSVG ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                      <div className="glass-loader-spinner" style={{ width: '35px', height: '35px', margin: 0 }} />
+                      <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Chargement des tracés...</span>
+                    </div>
+                  ) : (
+                    <canvas
+                      ref={canvasRef}
+                      width={300}
+                      height={300}
+                      onMouseDown={startDrawing}
+                      onMouseMove={draw}
+                      onMouseUp={stopDrawing}
+                      onMouseLeave={stopDrawing}
+                      onTouchStart={startDrawing}
+                      onTouchMove={draw}
+                      onTouchEnd={stopDrawing}
+                      style={{ 
+                        display: 'block', 
+                        cursor: 'crosshair',
+                        width: '100%',
+                        height: '100%',
+                        maxHeight: '300px',
+                        maxWidth: '300px',
+                      }}
+                    />
+                  )}
                 </div>
+                
                 <div style={{ fontSize: '0.75rem', color: '#71717a', textAlign: 'center', fontStyle: 'italic' }}>
-                  Tracez le caractère en suivant le modèle. (Écriture libre)
+                  {mode === 'guided' 
+                    ? `Tracez le trait ${currentStrokeIndex + 1} (indiqué par le numéro bleu) dans le bon sens.` 
+                    : "Entraînement en écriture libre sur le modèle en filigrane."}
                 </div>
               </div>
 
