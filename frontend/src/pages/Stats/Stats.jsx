@@ -237,28 +237,7 @@ export default function Stats() {
     );
   };
 
-  if (totalReviews === 0) {
-    return (
-      <div style={styles.container}>
-        <Navbar />
-        <div style={styles.contentWrapper}>
-          {renderPremiumCard()}
-          
-          <div style={styles.emptyStatsContainer}>
-            <div style={styles.emptyStatsIcon}>📊</div>
-            <h2 style={styles.emptyStatsTitle}>Aucune statistique pour le moment</h2>
-            <p style={styles.emptyStatsMessage}>
-              Il n'y a pas encore de données d'apprentissage enregistrées.
-              Mais rassurez-vous, il n'est pas trop tard pour commencer à apprendre et à réviser vos fiches !
-            </p>
-            <button onClick={() => navigate('/study')} style={styles.btnStartLearning}>
-              🧠 Commencer à réviser
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div style={styles.container}>
@@ -293,6 +272,53 @@ export default function Stats() {
             <span style={styles.miniCardValue}>
               {Object.values(stats.daily || {}).filter(c => c > 0).length} j
             </span>
+          </div>
+        </div>
+
+        {/* Progression des Écritures (Hiragana, Katakana, Kanji) */}
+        <div style={styles.cardContainer}>
+          <h2 style={styles.cardTitle}>✍️ Progression des écritures japonaises</h2>
+          <p style={styles.cardDescription}>Pourcentage de caractères appris (marqués comme connus) pour chaque alphabet.</p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Hiragana */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem', fontWeight: '600' }}>
+                <span style={{ color: '#cbd5e1' }}>Hiragana</span>
+                <span style={{ color: '#10b981' }}>
+                  {stats.learned_alphabets?.hiragana?.count || 0} / {stats.learned_alphabets?.hiragana?.total || 46} ({stats.learned_alphabets?.hiragana?.percentage || 0}%)
+                </span>
+              </div>
+              <div style={{ width: '100%', height: '12px', background: '#27272a', borderRadius: '6px', overflow: 'hidden' }}>
+                <div style={{ width: `${stats.learned_alphabets?.hiragana?.percentage || 0}%`, height: '100%', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: '6px', transition: 'width 0.5s ease-out' }} />
+              </div>
+            </div>
+
+            {/* Katakana */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem', fontWeight: '600' }}>
+                <span style={{ color: '#cbd5e1' }}>Katakana</span>
+                <span style={{ color: '#10b981' }}>
+                  {stats.learned_alphabets?.katakana?.count || 0} / {stats.learned_alphabets?.katakana?.total || 46} ({stats.learned_alphabets?.katakana?.percentage || 0}%)
+                </span>
+              </div>
+              <div style={{ width: '100%', height: '12px', background: '#27272a', borderRadius: '6px', overflow: 'hidden' }}>
+                <div style={{ width: `${stats.learned_alphabets?.katakana?.percentage || 0}%`, height: '100%', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: '6px', transition: 'width 0.5s ease-out' }} />
+              </div>
+            </div>
+
+            {/* Kanji N5 */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem', fontWeight: '600' }}>
+                <span style={{ color: '#cbd5e1' }}>Kanji (N5)</span>
+                <span style={{ color: '#10b981' }}>
+                  {stats.learned_alphabets?.kanji?.count || 0} / {stats.learned_alphabets?.kanji?.total || 36} ({stats.learned_alphabets?.kanji?.percentage || 0}%)
+                </span>
+              </div>
+              <div style={{ width: '100%', height: '12px', background: '#27272a', borderRadius: '6px', overflow: 'hidden' }}>
+                <div style={{ width: `${stats.learned_alphabets?.kanji?.percentage || 0}%`, height: '100%', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: '6px', transition: 'width 0.5s ease-out' }} />
+              </div>
+            </div>
           </div>
         </div>
 

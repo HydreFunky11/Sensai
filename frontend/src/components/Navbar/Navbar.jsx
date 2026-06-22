@@ -56,6 +56,18 @@ export function Navbar({ onImportClick, importing }) {
           📚 Bibliothèque
         </button>
         <button 
+          onClick={() => navigate('/alphabets')} 
+          aria-label="Apprendre les alphabets japonais"
+          style={{
+            ...styles.navBtn, 
+            background: currentPath === '/alphabets' ? '#8b5cf6' : 'transparent',
+            border: currentPath === '/alphabets' ? 'none' : '1px solid #444',
+            color: currentPath === '/alphabets' ? 'white' : '#cbd5e1'
+          }}
+        >
+          🇯🇵 Alphabets
+        </button>
+        <button 
           onClick={() => navigate('/study')} 
           aria-label="Accéder aux révisions"
           style={{

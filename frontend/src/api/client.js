@@ -196,6 +196,32 @@ export async function getReviewStats() {
   return response.json();
 }
 
+export async function toggleLearnedCharacter(character, alphabetType) {
+  const response = await fetch(`${BASE_URL}/cards/learned/toggle`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ character, alphabet_type: alphabetType }),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de la modification de l'état d'apprentissage");
+  }
+  return response.json();
+}
+
+export async function getLearnedCharacters() {
+  const response = await fetch(`${BASE_URL}/cards/learned`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Erreur lors de la récupération des caractères appris");
+  }
+  return response.json();
+}
+
 export async function getMe() {
   const response = await fetch(`${BASE_URL}/auth/me`, {
     headers: getAuthHeaders(),

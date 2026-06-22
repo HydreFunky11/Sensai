@@ -47,6 +47,10 @@ class FlashcardResponse(BaseModel):
 class ReviewSubmit(BaseModel):
     quality: int # 1: Again (Je sais plus), 2: Hard (Un peu), 3: Good (Je sais), 4: Easy (Trop facile)
 
+class LearnedCharacterToggle(BaseModel):
+    character: str
+    alphabet_type: str # 'hiragana', 'katakana', 'kanji'
+
 # --- ROUTES DECKS ---
 
 @router.get("/decks", response_model=List[DeckResponse])
@@ -285,8 +289,75 @@ def get_review_stats(db: Session = Depends(get_db), current_user: models.User = 
     sorted_weeks = dict(sorted(reviews_per_week.items()))
     last_12_weeks = dict(list(sorted_weeks.items())[-12:])
     
+    # Statistiques des alphabets appris
+    learned_counts = db.query(
+        models.LearnedCharacter.alphabet_type,
+        func.count(models.LearnedCharacter.id)
+    ).filter(
+        models.LearnedCharacter.user_id == current_user.id
+    ).group_by(
+        models.LearnedCharacter.alphabet_type
+    ).all()
+    
+    # Hiragana total: 46, Katakana total: 46, Kanji N5 total: 36
+    totals = {
+        "hiragana": 46,
+        "katakana": 46,
+        "kanji": 36
+    }
+    
+    learned_stats = {
+        "hiragana": {"count": 0, "total": 46, "percentage": 0.0},
+        "katakana": {"count": 0, "total": 46, "percentage": 0.0},
+        "kanji": {"count": 0, "total": 36, "percentage": 0.0}
+    }
+    
+    for alphabet, count in learned_counts:
+        if alphabet in learned_stats:
+            learned_stats[alphabet]["count"] = count
+            tot = totals[alphabet]
+            learned_stats[alphabet]["percentage"] = round((count / tot) * 100, 1) if tot > 0 else 0.0
+
     return {
         "weekly": last_12_weeks,
         "buttons_month": buttons_current_month,
-        "daily": daily_reviews
+        "daily": daily_reviews,
+        "learned_alphabets": learned_stats
     }
+
+@router.post("/learned/toggle")
+def toggle_learned_character(
+    data: LearnedCharacterToggle,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Marque ou démarque un caractère comme connu/appris"""
+    learned = db.query(models.LearnedCharacter).filter(
+        models.LearnedCharacter.user_id == current_user.id,
+        models.LearnedCharacter.character == data.character
+    ).first()
+    
+    if learned:
+        db.delete(learned)
+        db.commit()
+        return {"status": "removed", "character": data.character}
+    else:
+        new_learned = models.LearnedCharacter(
+            user_id=current_user.id,
+            character=data.character,
+            alphabet_type=data.alphabet_type
+        )
+        db.add(new_learned)
+        db.commit()
+        return {"status": "added", "character": data.character}
+
+@router.get("/learned")
+def get_learned_characters(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Récupère la liste de tous les caractères appris par l'utilisateur"""
+    learned = db.query(models.LearnedCharacter).filter(
+        models.LearnedCharacter.user_id == current_user.id
+    ).all()
+    return [l.character for l in learned]

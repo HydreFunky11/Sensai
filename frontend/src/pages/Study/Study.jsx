@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   getDueFlashcards,
   submitCardReview,
@@ -27,6 +27,274 @@ export default function Study() {
   const [cards, setCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
+
+  // --- ÉTATS DESSIN CARACTÈRES ---
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [loadingSVG, setLoadingSVG] = useState(false);
+  const [strokesData, setStrokesData] = useState([]);
+  const [currentStrokeIndex, setCurrentStrokeIndex] = useState(0);
+  const [completedStrokes, setCompletedStrokes] = useState([]);
+  const [svgUnavailable, setSvgUnavailable] = useState(false);
+  const [userDidNotKnow, setUserDidNotKnow] = useState(false);
+
+  const canvasRef = useRef(null);
+  const lastX = useRef(0);
+  const lastY = useRef(0);
+  const userStrokePoints = useRef([]);
+
+  // Charger le tracé vectoriel KanjiVG
+  const fetchStrokeOrder = async (char) => {
+    if (!char) return;
+    setLoadingSVG(true);
+    setSvgUnavailable(false);
+    setCompletedStrokes([]);
+    setCurrentStrokeIndex(0);
+    setStrokesData([]);
+    
+    try {
+      const codePoint = char.codePointAt(0);
+      const hex = codePoint.toString(16).padStart(5, '0');
+      const url = `https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/${hex}.svg`;
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("SVG introuvable dans la base KanjiVG");
+      }
+      
+      const text = await response.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'image/svg+xml');
+      const paths = Array.from(doc.querySelectorAll('path'));
+      
+      const parsedStrokes = paths.map(path => {
+        const d = path.getAttribute('d');
+        return getPathPoints(d, 25);
+      });
+      
+      setStrokesData(parsedStrokes);
+      console.log(`✅ ${parsedStrokes.length} tracés chargés pour ${char}`);
+    } catch (err) {
+      console.warn("Impossible de charger le tracé KanjiVG:", err);
+      setSvgUnavailable(true);
+      toast.error("Modèle de tracé guidé indisponible pour ce caractère.");
+    } finally {
+      setLoadingSVG(false);
+    }
+  };
+
+  const getPathPoints = (pathD, sampleCount = 25) => {
+    const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    pathEl.setAttribute('d', pathD);
+    const totalLength = pathEl.getTotalLength();
+    const points = [];
+    const canvasWidth = 300;
+    const scale = canvasWidth / 109;
+
+    for (let i = 0; i <= sampleCount; i++) {
+      const distance = (i / sampleCount) * totalLength;
+      const pt = pathEl.getPointAtLength(distance);
+      points.push({ 
+        x: pt.x * scale, 
+        y: pt.y * scale 
+      });
+    }
+    return points;
+  };
+
+  // Dessin du canevas guidé
+  const drawGuidedGuide = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Grille de repères
+    ctx.strokeStyle = '#27272a';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height / 2);
+    ctx.lineTo(canvas.width, canvas.height / 2);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 0);
+    ctx.lineTo(canvas.width / 2, canvas.height);
+    ctx.stroke();
+    
+    ctx.setLineDash([]); // Reset
+
+    // Si l'utilisateur ne sait pas ou qu'on affiche la réponse : afficher TOUT le tracé en filigrane (ou en vert)
+    if (showAnswer || userDidNotKnow) {
+      ctx.lineWidth = 12;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = userDidNotKnow ? 'rgba(239, 68, 68, 0.4)' : '#10b981';
+      
+      strokesData.forEach((stroke) => {
+        ctx.beginPath();
+        ctx.moveTo(stroke[0].x, stroke[0].y);
+        for (let i = 1; i < stroke.length; i++) {
+          ctx.lineTo(stroke[i].x, stroke[i].y);
+        }
+        ctx.stroke();
+      });
+      return;
+    }
+
+    // 1. Dessiner les traits futurs en filigrane (gris clair)
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    strokesData.forEach((stroke, idx) => {
+      if (idx >= currentStrokeIndex) {
+        ctx.strokeStyle = idx === currentStrokeIndex ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        ctx.moveTo(stroke[0].x, stroke[0].y);
+        for (let i = 1; i < stroke.length; i++) {
+          ctx.lineTo(stroke[i].x, stroke[i].y);
+        }
+        ctx.stroke();
+      }
+    });
+
+    // 2. Dessiner les traits déjà validés en vert néon
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 10;
+    completedStrokes.forEach(strokePoints => {
+      ctx.beginPath();
+      ctx.moveTo(strokePoints[0].x, strokePoints[0].y);
+      for (let i = 1; i < strokePoints.length; i++) {
+        ctx.lineTo(strokePoints[i].x, strokePoints[i].y);
+      }
+      ctx.stroke();
+    });
+
+    // 3. Dessiner le badge indicateur du début de tracé du trait actif
+    if (currentStrokeIndex < strokesData.length && strokesData[currentStrokeIndex]) {
+      const activeStroke = strokesData[currentStrokeIndex];
+      const startPt = activeStroke[0];
+      
+      ctx.fillStyle = '#3b82f6';
+      ctx.beginPath();
+      ctx.arc(startPt.x - 14, startPt.y - 14, 11, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(currentStrokeIndex + 1, startPt.x - 14, startPt.y - 14);
+    }
+  }, [strokesData, currentStrokeIndex, completedStrokes, showAnswer, userDidNotKnow]);
+
+  useEffect(() => {
+    if (strokesData.length > 0) {
+      drawGuidedGuide();
+    }
+  }, [strokesData, currentStrokeIndex, completedStrokes, showAnswer, userDidNotKnow, drawGuidedGuide]);
+
+  const getCoordinates = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    
+    const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+    
+    const x = ((clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((clientY - rect.top) / rect.height) * canvas.height;
+    
+    return { x, y };
+  };
+
+  const startDrawing = (e) => {
+    if (showAnswer || userDidNotKnow) return; // Ne pas dessiner si déjà répondu
+    e.preventDefault();
+    const { x, y } = getCoordinates(e);
+    setIsDrawing(true);
+    lastX.current = x;
+    lastY.current = y;
+    userStrokePoints.current = [{ x, y }];
+  };
+
+  const draw = (e) => {
+    if (!isDrawing || showAnswer || userDidNotKnow) return;
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const { x, y } = getCoordinates(e);
+
+    ctx.strokeStyle = '#8b5cf6';
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(lastX.current, lastY.current);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+
+    lastX.current = x;
+    lastY.current = y;
+    userStrokePoints.current.push({ x, y });
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawing || showAnswer || userDidNotKnow) return;
+    setIsDrawing(false);
+    validateUserStroke();
+  };
+
+  const validateUserStroke = () => {
+    const pts = userStrokePoints.current;
+    if (pts.length < 5) {
+      drawGuidedGuide();
+      return;
+    }
+
+    if (currentStrokeIndex >= strokesData.length) return;
+
+    const targetStroke = strokesData[currentStrokeIndex];
+    const getDistance = (p1, p2) => Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+    
+    const startDist = getDistance(pts[0], targetStroke[0]);
+    const endDist = getDistance(pts[pts.length - 1], targetStroke[targetStroke.length - 1]);
+    const midDist = getDistance(
+      pts[Math.floor(pts.length / 2)], 
+      targetStroke[Math.floor(targetStroke.length / 2)]
+    );
+
+    const threshold = 95;
+
+    if (startDist < threshold && endDist < threshold && midDist < threshold) {
+      toast.success(`Trait ${currentStrokeIndex + 1} validé !`, { id: 'study-stroke-toast', duration: 800 });
+      const newCompleted = [...completedStrokes, targetStroke];
+      setCompletedStrokes(newCompleted);
+      
+      const nextIndex = currentStrokeIndex + 1;
+      setCurrentStrokeIndex(nextIndex);
+      
+      if (nextIndex >= strokesData.length) {
+        toast.success(`🎉 Excellent ! Écriture complétée !`, { duration: 1500 });
+        setShowAnswer(true); // Affiche le verso
+      }
+    } else {
+      toast.error("Tracé incorrect. Respectez le sens et l'ordre des traits !", { id: 'study-stroke-toast', duration: 1200 });
+      drawGuidedGuide();
+    }
+  };
+
+  const resetWriting = () => {
+    setCompletedStrokes([]);
+    setCurrentStrokeIndex(0);
+    setUserDidNotKnow(false);
+    drawGuidedGuide();
+  };
 
   // Edit mode
   const [editDeckTitle, setEditDeckTitle] = useState("");
@@ -68,6 +336,17 @@ export default function Study() {
     loadDecksAndStats();
   }, []);
 
+  // Charger le tracé vectoriel au changement de carte de type caractère
+  useEffect(() => {
+    const currentCard = cards[currentIndex];
+    if (viewMode === "study" && currentCard && currentCard.context_note === 'character') {
+      setUserDidNotKnow(false);
+      setCompletedStrokes([]);
+      setCurrentStrokeIndex(0);
+      fetchStrokeOrder(currentCard.text_source);
+    }
+  }, [currentIndex, viewMode, cards]);
+
   const startStudySession = async (deck) => {
     setLoading(true);
     try {
@@ -106,7 +385,9 @@ export default function Study() {
 
       if (quality === 1) {
         // "Je ne sais plus" -> Recommence après 3-4 cartes (insertion à i + 4)
-        const insertIndex = Math.min(currentIndex + 4, updatedQueue.length);
+        // Mais pour un caractère japonais, la carte revient 6-7 cartes plus tard (insertion à i + 7)
+        const gap = currentCard.context_note === 'character' ? 7 : 4;
+        const insertIndex = Math.min(currentIndex + gap, updatedQueue.length);
         updatedQueue.splice(insertIndex, 0, currentCard);
       } else if (quality === 2) {
         // "Un peu dur" -> Recommence après 6-7 cartes (insertion à i + 7)
@@ -369,136 +650,320 @@ export default function Study() {
             {cards.length > 0 && cards[currentIndex] && (
               <div style={styles.studyCard}>
                 {/* RECTO */}
-                <div style={styles.cardSectionRecto}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      gap: "15px",
-                    }}
-                  >
-                    <h2 style={styles.kanaText}>
-                      {cards[currentIndex].text_source}
-                    </h2>
-                    <button
-                      onClick={() => playAudio(cards[currentIndex].text_source)}
-                      style={styles.btnAudio}
-                      title="Écouter la prononciation"
+                {cards[currentIndex].context_note !== 'character' ? (
+                  <div style={styles.cardSectionRecto}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        gap: "15px",
+                      }}
                     >
-                      🔊
-                    </button>
+                      <h2 style={styles.kanaText}>
+                        {cards[currentIndex].text_source}
+                      </h2>
+                      <button
+                        onClick={() => playAudio(cards[currentIndex].text_source)}
+                        style={styles.btnAudio}
+                        title="Écouter la prononciation"
+                      >
+                        🔊
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+                    <h3 style={{ fontSize: '1.2rem', color: '#cbd5e1', fontWeight: 600, margin: '0 0 5px 0', textAlign: 'center' }}>
+                      Tracez le caractère correspondant :
+                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '5px' }}>
+                      <span style={{ fontSize: '2.5rem', color: '#8b5cf6', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        {cards[currentIndex].romaji}
+                      </span>
+                      <button
+                        onClick={() => playAudio(cards[currentIndex].text_source)}
+                        style={{ ...styles.btnAudio, fontSize: '24px' }}
+                        title="Écouter la prononciation"
+                      >
+                        🔊
+                      </button>
+                    </div>
+                    
+                    {/* Canvas d'écriture pour la carte caractère */}
+                    <div 
+                      style={{ 
+                        width: '300px',
+                        height: '300px', 
+                        background: '#09090b',
+                        borderRadius: '16px',
+                        border: '1px dashed #27272a',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        margin: '0 auto 10px auto'
+                      }}
+                    >
+                      {loadingSVG ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '10px' }}>
+                          <div className="glass-loader-spinner" style={{ width: '35px', height: '35px', margin: 0 }} />
+                          <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Chargement...</span>
+                        </div>
+                      ) : (
+                        <canvas
+                          ref={canvasRef}
+                          width={300}
+                          height={300}
+                          onMouseDown={startDrawing}
+                          onMouseMove={draw}
+                          onMouseUp={stopDrawing}
+                          onMouseLeave={stopDrawing}
+                          onTouchStart={startDrawing}
+                          onTouchMove={draw}
+                          onTouchEnd={stopDrawing}
+                          style={{ 
+                            display: 'block', 
+                            cursor: (showAnswer || userDidNotKnow) ? 'default' : 'crosshair',
+                            width: '100%',
+                            height: '100%'
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    {/* Boutons de contrôle de dessin (seulement au Recto) */}
+                    {!showAnswer && (
+                      <div style={{ display: 'flex', gap: '15px', width: '100%', justifyContent: 'center', marginBottom: '15px' }}>
+                        <button
+                          onClick={resetWriting}
+                          style={{
+                            background: 'transparent',
+                            color: '#cbd5e1',
+                            border: '1px solid #3f3f3f',
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          Effacer
+                        </button>
+                        <button
+                          onClick={() => {
+                            setUserDidNotKnow(true);
+                            setShowAnswer(true);
+                          }}
+                          style={{
+                            background: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            padding: '8px 20px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            transition: 'all 0.2s',
+                            boxShadow: '0 4px 6px rgba(239, 68, 68, 0.2)'
+                          }}
+                        >
+                          Je ne sais plus
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* VERSO */}
                 {showAnswer ? (
                   <div style={styles.cardSectionVerso}>
                     <hr style={styles.divider} />
 
-                    <p style={styles.romajiText}>{cards[currentIndex].romaji}</p>
+                    {cards[currentIndex].context_note === 'character' ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                        <h2 style={{ fontSize: '3rem', color: '#4ade80', margin: '0', fontWeight: '800', textAlign: 'center' }}>
+                          {cards[currentIndex].text_source}
+                        </h2>
+                        
+                        <p style={styles.romajiText}>Romaji : {cards[currentIndex].romaji}</p>
+                        
+                        <h3 style={styles.translationText}>
+                          {cards[currentIndex].translation}
+                        </h3>
 
-                    <h3 style={styles.translationText}>
-                      {cards[currentIndex].translation}
-                    </h3>
-
-                    {cards[currentIndex].context_note && (
-                      <p style={styles.contextNote}>
-                        📝 Note: {cards[currentIndex].context_note}
-                      </p>
-                    )}
-
-                    {/* Découpage grammatical */}
-                    {cards[currentIndex].breakdown &&
-                      cards[currentIndex].breakdown.length > 0 && (
-                        <div style={styles.breakdownContainer}>
-                          <h4
-                            style={{
-                              margin: "0 0 10px 0",
-                              color: "#e2e8f0",
-                              fontSize: "0.95rem",
-                            }}
-                          >
-                            Découpage lexical :
-                          </h4>
-                          {cards[currentIndex].breakdown.map((item, i) => (
-                            <div key={i} style={styles.breakdownItem}>
-                              <strong style={{ color: '#60a5fa' }}>{item.word}</strong> 
-                              {item.romanji ? (
-                                <span
-                                  style={{ color: "#94a3b8", fontSize: "0.8rem" }}
-                                >
-                                  {" "}
-                                  ({item.romanji})
-                                </span>
-                              ) : null}
-                              :{" "}
-                              <span style={{ fontWeight: "500" }}>
-                                {item.meaning}
-                              </span>
-                              {item.grammar ? (
-                                <span style={styles.grammarTag}>
-                                  {item.grammar}
-                                </span>
-                              ) : null}
+                        {userDidNotKnow ? (
+                          <div style={{ width: '100%', textAlign: 'center', marginTop: '10px' }}>
+                            <p style={{ color: '#ef4444', fontSize: '0.9rem', fontWeight: 600, marginBottom: '15px' }}>
+                              💡 Voici le tracé correct. Retenez-le, il reviendra 6-7 cartes plus tard !
+                            </p>
+                            <button
+                              onClick={() => handleReview(1)}
+                              style={{
+                                padding: '12px 28px',
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '1rem',
+                                fontWeight: 700,
+                                boxShadow: '0 4px 10px rgba(239, 68, 68, 0.3)',
+                                transition: 'transform 0.1s ease',
+                                outline: 'none'
+                              }}
+                            >
+                              Continuer
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ width: '100%' }}>
+                            <p style={{ color: '#22c55e', fontSize: '0.9rem', fontWeight: 600, textAlign: 'center', marginBottom: '15px' }}>
+                              🎉 Tracé validé ! Saisissez votre niveau de maîtrise :
+                            </p>
+                            <div style={styles.buttonsContainer}>
+                              <button
+                                onClick={() => handleReview(2)}
+                                style={{ ...styles.btnReview, background: "#f97316" }}
+                              >
+                                Un peu dur
+                                <br />
+                                <small style={styles.smallLabel}>
+                                  Recommence dans ~6 cartes
+                                </small>
+                              </button>
+                              <button
+                                onClick={() => handleReview(3)}
+                                style={{ ...styles.btnReview, background: "#22c55e" }}
+                              >
+                                Je sais
+                                <br />
+                                <small style={styles.smallLabel}>
+                                  Recommence dans ~12 cartes
+                                </small>
+                              </button>
+                              <button
+                                onClick={() => handleReview(4)}
+                                style={{ ...styles.btnReview, background: "#3b82f6" }}
+                              >
+                                Trop facile
+                                <br />
+                                <small style={styles.smallLabel}>
+                                  Ne reviendra plus aujourd'hui
+                                </small>
+                              </button>
                             </div>
-                          ))}
-                        </div>
-                      )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <p style={styles.romajiText}>{cards[currentIndex].romaji}</p>
 
-                    {/* Boutons d'auto-évaluation */}
-                    <div style={styles.buttonsContainer}>
-                      <button
-                        onClick={() => handleReview(1)}
-                        style={{ ...styles.btnReview, background: "#ef4444" }}
-                      >
-                        Je ne sais plus
-                        <br />
-                        <small style={styles.smallLabel}>
-                          Recommence dans ~3 cartes
-                        </small>
-                      </button>
-                      <button
-                        onClick={() => handleReview(2)}
-                        style={{ ...styles.btnReview, background: "#f97316" }}
-                      >
-                        Un peu dur
-                        <br />
-                        <small style={styles.smallLabel}>
-                          Recommence dans ~6 cartes
-                        </small>
-                      </button>
-                      <button
-                        onClick={() => handleReview(3)}
-                        style={{ ...styles.btnReview, background: "#22c55e" }}
-                      >
-                        Je sais
-                        <br />
-                        <small style={styles.smallLabel}>
-                          Recommence dans ~12 cartes
-                        </small>
-                      </button>
-                      <button
-                        onClick={() => handleReview(4)}
-                        style={{ ...styles.btnReview, background: "#3b82f6" }}
-                      >
-                        Trop facile
-                        <br />
-                        <small style={styles.smallLabel}>
-                          Ne reviendra plus aujourd'hui
-                        </small>
-                      </button>
-                    </div>
+                        <h3 style={styles.translationText}>
+                          {cards[currentIndex].translation}
+                        </h3>
+
+                        {cards[currentIndex].context_note && (
+                          <p style={styles.contextNote}>
+                            📝 Note: {cards[currentIndex].context_note}
+                          </p>
+                        )}
+
+                        {/* Découpage lexical */}
+                        {cards[currentIndex].breakdown &&
+                          cards[currentIndex].breakdown.length > 0 && (
+                            <div style={styles.breakdownContainer}>
+                              <h4
+                                style={{
+                                  margin: "0 0 10px 0",
+                                  color: "#e2e8f0",
+                                  fontSize: "0.95rem",
+                                }}
+                              >
+                                Découpage lexical :
+                              </h4>
+                              {cards[currentIndex].breakdown.map((item, i) => (
+                                <div key={i} style={styles.breakdownItem}>
+                                  <strong style={{ color: '#60a5fa' }}>{item.word}</strong> 
+                                  {item.romanji ? (
+                                    <span
+                                      style={{ color: "#94a3b8", fontSize: "0.8rem" }}
+                                    >
+                                      {" "}
+                                      ({item.romanji})
+                                    </span>
+                                  ) : null}
+                                  :{" "}
+                                  <span style={{ fontWeight: "500" }}>
+                                    {item.meaning}
+                                  </span>
+                                  {item.grammar ? (
+                                    <span style={styles.grammarTag}>
+                                      {item.grammar}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                        {/* Boutons d'auto-évaluation */}
+                        <div style={styles.buttonsContainer}>
+                          <button
+                            onClick={() => handleReview(1)}
+                            style={{ ...styles.btnReview, background: "#ef4444" }}
+                          >
+                            Je ne sais plus
+                            <br />
+                            <small style={styles.smallLabel}>
+                              Recommence dans ~3 cartes
+                            </small>
+                          </button>
+                          <button
+                            onClick={() => handleReview(2)}
+                            style={{ ...styles.btnReview, background: "#f97316" }}
+                          >
+                            Un peu dur
+                            <br />
+                            <small style={styles.smallLabel}>
+                              Recommence dans ~6 cartes
+                            </small>
+                          </button>
+                          <button
+                            onClick={() => handleReview(3)}
+                            style={{ ...styles.btnReview, background: "#22c55e" }}
+                          >
+                            Je sais
+                            <br />
+                            <small style={styles.smallLabel}>
+                              Recommence dans ~12 cartes
+                            </small>
+                          </button>
+                          <button
+                            onClick={() => handleReview(4)}
+                            style={{ ...styles.btnReview, background: "#3b82f6" }}
+                          >
+                            Trop facile
+                            <br />
+                            <small style={styles.smallLabel}>
+                              Ne reviendra plus aujourd'hui
+                            </small>
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
-                  <div style={{ textAlign: "center", marginTop: "40px" }}>
-                    <button
-                      onClick={() => setShowAnswer(true)}
-                      style={styles.btnShowAnswer}
-                    >
-                      Afficher la réponse
-                    </button>
-                  </div>
+                  cards[currentIndex].context_note !== 'character' && (
+                    <div style={{ textAlign: "center", marginTop: "40px" }}>
+                      <button
+                        onClick={() => setShowAnswer(true)}
+                        style={styles.btnShowAnswer}
+                      >
+                        Afficher la réponse
+                      </button>
+                    </div>
+                  )
                 )}
               </div>
             )}
