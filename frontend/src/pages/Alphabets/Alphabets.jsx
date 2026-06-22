@@ -2,12 +2,22 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Navbar } from '../../components/Navbar/Navbar';
 import { HIRAGANA, KATAKANA, KANJI_N5 } from './alphabetData';
 import { toast } from 'react-hot-toast';
+import { getDecks, createFlashcard, toggleLearnedCharacter, getLearnedCharacters } from '../../api/client';
 
 function Alphabets() {
   const [activeTab, setActiveTab] = useState('hiragana'); // 'hiragana', 'katakana', 'kanji'
   const [selectedChar, setSelectedChar] = useState(null);
   const [mode, setMode] = useState('guided'); // 'free' or 'guided'
   const [isDrawing, setIsDrawing] = useState(false);
+
+  // États pour le dossier de révision
+  const [decks, setDecks] = useState([]);
+  const [selectedDeckId, setSelectedDeckId] = useState('');
+  const [savingCard, setSavingCard] = useState(false);
+
+  // État pour les caractères appris (connu)
+  const [learnedChars, setLearnedChars] = useState(new Set());
+  const [togglingLearned, setTogglingLearned] = useState(false);
 
   // États pour le mode Guidé (KanjiVG)
   const [loadingSVG, setLoadingSVG] = useState(false);
@@ -20,6 +30,73 @@ function Alphabets() {
   const lastX = useRef(0);
   const lastY = useRef(0);
   const userStrokePoints = useRef([]);
+
+  // Charger les dossiers de révision et les caractères appris au montage
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const fetchedDecks = await getDecks();
+        setDecks(fetchedDecks);
+        if (fetchedDecks.length > 0) {
+          setSelectedDeckId(fetchedDecks[0].id);
+        }
+      } catch (e) {
+        console.error("Erreur chargement dossiers de révision:", e);
+      }
+
+      try {
+        const chars = await getLearnedCharacters();
+        setLearnedChars(new Set(chars));
+      } catch (e) {
+        console.error("Erreur chargement caractères appris:", e);
+      }
+    };
+    loadInitialData();
+  }, []);
+
+  const handleSaveToDeck = async () => {
+    if (!selectedChar || !selectedDeckId) {
+      toast.error("Veuillez sélectionner un caractère et un dossier");
+      return;
+    }
+    setSavingCard(true);
+    try {
+      const cardData = {
+        deck_id: parseInt(selectedDeckId, 10),
+        text_source: selectedChar.char,
+        translation: selectedChar.meaning || selectedChar.char,
+        romaji: selectedChar.romaji,
+        context_note: 'character',
+      };
+      await createFlashcard(cardData);
+      toast.success(`Caractère "${selectedChar.char}" ajouté au dossier de révision !`);
+    } catch (err) {
+      toast.error(err.detail || err.message || "Erreur lors de l'enregistrement");
+    } finally {
+      setSavingCard(false);
+    }
+  };
+
+  const handleToggleLearned = async () => {
+    if (!selectedChar) return;
+    setTogglingLearned(true);
+    try {
+      const res = await toggleLearnedCharacter(selectedChar.char, activeTab);
+      const updated = new Set(learnedChars);
+      if (res.status === 'added') {
+        updated.add(selectedChar.char);
+        toast.success(`Caractère "${selectedChar.char}" marqué comme connu !`);
+      } else {
+        updated.delete(selectedChar.char);
+        toast.success(`Caractère "${selectedChar.char}" retiré de la liste des connus.`);
+      }
+      setLearnedChars(updated);
+    } catch (err) {
+      toast.error(err.message || "Erreur lors du changement de statut");
+    } finally {
+      setTogglingLearned(false);
+    }
+  };
 
   // Charger le premier caractère par défaut à l'ouverture ou au changement d'onglet
   useEffect(() => {
@@ -383,6 +460,30 @@ function Alphabets() {
           }
 
           const isSelected = selectedChar && selectedChar.char === charObj.char;
+          const isLearned = learnedChars.has(charObj.char);
+
+          let btnBackground = '#18181c';
+          let btnBorder = '1px solid #27272a';
+          let btnColor = '#f8fafc';
+          let btnShadow = 'none';
+
+          if (isSelected) {
+            if (isLearned) {
+              btnBackground = 'rgba(16, 185, 129, 0.2)';
+              btnBorder = '2px solid #10b981';
+              btnColor = '#a7f3d0';
+              btnShadow = '0 0 15px rgba(16, 185, 129, 0.35)';
+            } else {
+              btnBackground = 'rgba(139, 92, 246, 0.15)';
+              btnBorder = '2px solid #8b5cf6';
+              btnColor = '#c084fc';
+              btnShadow = '0 0 15px rgba(139, 92, 246, 0.25)';
+            }
+          } else if (isLearned) {
+            btnBackground = 'rgba(16, 185, 129, 0.08)';
+            btnBorder = '1px solid rgba(16, 185, 129, 0.35)';
+            btnColor = '#a7f3d0';
+          }
 
           return (
             <button
@@ -390,29 +491,29 @@ function Alphabets() {
               onClick={() => handleCharClick(charObj)}
               style={{
                 aspectRatio: '1/1',
-                background: isSelected ? 'rgba(139, 92, 246, 0.15)' : '#18181c',
-                border: isSelected ? '2px solid #8b5cf6' : '1px solid #27272a',
+                background: btnBackground,
+                border: btnBorder,
                 borderRadius: '12px',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: isSelected ? '#c084fc' : '#f8fafc',
+                color: btnColor,
                 transition: 'all 0.2s ease',
-                boxShadow: isSelected ? '0 0 15px rgba(139, 92, 246, 0.25)' : 'none',
+                boxShadow: btnShadow,
                 outline: 'none',
                 padding: '6px'
               }}
               onMouseEnter={(e) => {
                 if (!isSelected) {
-                  e.currentTarget.style.borderColor = '#4b5563';
+                  e.currentTarget.style.borderColor = isLearned ? 'rgba(16, 185, 129, 0.7)' : '#4b5563';
                   e.currentTarget.style.transform = 'translateY(-2px)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isSelected) {
-                  e.currentTarget.style.borderColor = '#27272a';
+                  e.currentTarget.style.borderColor = isLearned ? 'rgba(16, 185, 129, 0.35)' : '#27272a';
                   e.currentTarget.style.transform = 'translateY(0)';
                 }
               }}
@@ -487,7 +588,7 @@ function Alphabets() {
               {/* Entête Fiche */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#f8fafc' }}>
                       {selectedChar.char}
                     </span>
@@ -506,7 +607,8 @@ function Alphabets() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.2s',
+                        outline: 'none'
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.background = '#8b5cf6';
@@ -518,6 +620,37 @@ function Alphabets() {
                       }}
                     >
                       🔊
+                    </button>
+
+                    <button
+                      onClick={handleToggleLearned}
+                      disabled={togglingLearned}
+                      style={{
+                        background: learnedChars.has(selectedChar.char) ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                        border: learnedChars.has(selectedChar.char) ? '1px solid #10b981' : '1px solid #27272a',
+                        color: learnedChars.has(selectedChar.char) ? '#10b981' : '#cbd5e1',
+                        borderRadius: '20px',
+                        padding: '6px 14px',
+                        cursor: togglingLearned ? 'not-allowed' : 'pointer',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        transition: 'all 0.2s',
+                        outline: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        height: '34px',
+                        boxShadow: learnedChars.has(selectedChar.char) ? '0 0 10px rgba(16, 185, 129, 0.2)' : 'none'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!togglingLearned) {
+                          e.currentTarget.style.background = learnedChars.has(selectedChar.char) ? 'rgba(16, 185, 129, 0.22)' : 'rgba(255, 255, 255, 0.1)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = learnedChars.has(selectedChar.char) ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.05)';
+                      }}
+                    >
+                      {learnedChars.has(selectedChar.char) ? '✓ Connu' : 'Je connais'}
                     </button>
                   </div>
                   <p style={{ margin: '4px 0 0 0', color: '#a1a1aa', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>
@@ -649,6 +782,72 @@ function Alphabets() {
                   {mode === 'guided' 
                     ? `Tracez le trait ${currentStrokeIndex + 1} (indiqué par le numéro bleu) dans le bon sens.` 
                     : "Entraînement en écriture libre sur le modèle en filigrane."}
+                </div>
+              </div>
+
+              {/* Ajouter au dossier de révision */}
+              <div 
+                style={{ 
+                  marginTop: '10px', 
+                  paddingTop: '16px', 
+                  borderTop: '1px solid #1f1f23',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}
+              >
+                <label style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>
+                  📁 Ajouter aux révisions
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select
+                    value={selectedDeckId}
+                    onChange={(e) => setSelectedDeckId(e.target.value)}
+                    style={{
+                      flex: 1,
+                      background: '#18181b',
+                      color: '#f8fafc',
+                      border: '1px solid #27272a',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '0.85rem',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {decks.length === 0 ? (
+                      <option value="">Aucun dossier disponible</option>
+                    ) : (
+                      decks.map(deck => (
+                        <option key={deck.id} value={deck.id}>
+                          {deck.title}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <button
+                    onClick={handleSaveToDeck}
+                    disabled={savingCard || !selectedDeckId}
+                    style={{
+                      background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '8px 16px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: (savingCard || !selectedDeckId) ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 4px 12px rgba(139, 92, 246, 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      whiteSpace: 'nowrap',
+                      opacity: (savingCard || !selectedDeckId) ? 0.6 : 1
+                    }}
+                  >
+                    {savingCard ? 'Enregistrement...' : '💾 Enregistrer'}
+                  </button>
                 </div>
               </div>
 

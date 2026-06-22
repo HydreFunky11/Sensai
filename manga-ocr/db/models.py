@@ -19,6 +19,7 @@ class User(Base):
 
     mangas = relationship("Manga", back_populates="owner")
     decks = relationship("Deck", back_populates="owner")
+    learned_characters = relationship("LearnedCharacter", back_populates="owner")
 
 class MangaFolder(Base):
     __tablename__ = "manga_folders"
@@ -138,3 +139,15 @@ class AnalysisLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class LearnedCharacter(Base):
+    """Caractères japonais appris par l'utilisateur"""
+    __tablename__ = "learned_characters"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    character = Column(String, index=True)
+    alphabet_type = Column(String) # 'hiragana', 'katakana', 'kanji'
+    learned_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    owner = relationship("User", back_populates="learned_characters")
