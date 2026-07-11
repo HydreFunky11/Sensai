@@ -1,0 +1,108 @@
+name: SensAI CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # --- JOB 1 : TESTS DU BACKEND ---
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libglib2.0-0 ffmpeg
+
+      - name: Install Python Dependencies
+        env:
+          PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
+        run: |
+          cd manga-ocr
+          pip install --upgrade pip
+          # Installer la version CPU de PyTorch sans utiliser le cache
+          pip install --no-cache-dir torch torchvision
+          pip install --no-cache-dir -r requirements.txt
+          pip install --no-cache-dir pytest pytest-asyncio pytest-cov httpx
+
+      - name: Run Backend Unit Tests
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || 'dummy_groq_api_key_for_ci_tests' }}
+        run: |
+          cd manga-ocr
+          python -m pytest --cov=. --cov-report=xml
+
+  # --- JOB 2 : TESTS & BUILD DU FRONTEND ---
+  frontend-test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Run Frontend Unit Tests
+        run: |
+          cd frontend
+          npm run test
+
+      - name: Build Frontend Production Package
+        run: |
+          cd frontend
+          npm run build
+
+  # --- JOB 3 : VALIDATION DES DOCKERFILES ---
+  docker-validation:
+    needs: [backend-test, frontend-test-and-build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Backend Docker Build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./manga-ocr
+          file: ./manga-ocr/Dockerfile
+          push: false # Ne pas pousser sans credentials, juste valider le build
+          tags: sensai-backend:latest
+
+      - name: Validate Frontend Docker Build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          tags: sensai-frontend:latest
