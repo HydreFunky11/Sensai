@@ -114,8 +114,8 @@ export function Navbar({ onImportClick, importing }) {
           </button>
         )}
 
-        {/* Stripe Premium subscribe or active indicator */}
-        {!isPremium ? (
+        {/* Stripe Premium subscribe */}
+        {!isPremium && (
           <button 
             onClick={handleSubscribe} 
             disabled={subscribing}
@@ -130,25 +130,6 @@ export function Navbar({ onImportClick, importing }) {
           >
             {subscribing ? '⏳...' : '👑 S\'abonner'}
           </button>
-        ) : (
-          <span 
-            title="Votre abonnement SensAI Premium est actif !"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              background: 'rgba(192, 132, 252, 0.1)',
-              border: '1px solid #c084fc',
-              color: '#e9d5ff',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              fontWeight: '700',
-              fontSize: '0.85rem',
-              height: '34px',
-              boxSizing: 'border-box'
-            }}
-          >
-            👑 Premium
-          </span>
         )}
 
         <button 
