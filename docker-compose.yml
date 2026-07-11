@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./manga-ocr
+      dockerfile: Dockerfile
+    container_name: sensai-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Volume pour persister la base de données SQLite
+      - backend-db:/app/db_data
+      # Volume pour stocker les images importées par les utilisateurs
+      - backend-uploads:/app/uploads
+    environment:
+      - DATABASE_URL=sqlite:///./db_data/sensai.db
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sensai-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  backend-db:
+  backend-uploads:
