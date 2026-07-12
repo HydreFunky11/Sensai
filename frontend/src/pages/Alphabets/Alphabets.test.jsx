@@ -35,10 +35,10 @@ describe('Composant Alphabets', () => {
     // Vérifie le rendu de la Navbar mockée
     expect(screen.getByTestId('mock-navbar')).toBeInTheDocument();
 
-    // Vérifie la présence des boutons d'onglets
-    expect(screen.getByRole('button', { name: /hiragana/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /katakana/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /kanji/i })).toBeInTheDocument();
+    // Vérifie la présence des boutons d'onglets (ayant le rôle tab)
+    expect(screen.getByRole('tab', { name: /hiragana/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /katakana/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /kanji/i })).toBeInTheDocument();
   });
 
   it('devrait charger les dossiers et les caractères appris au montage', async () => {
