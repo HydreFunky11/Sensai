@@ -36,11 +36,81 @@ export default function Study() {
   const [completedStrokes, setCompletedStrokes] = useState([]);
   const [svgUnavailable, setSvgUnavailable] = useState(false);
   const [userDidNotKnow, setUserDidNotKnow] = useState(false);
+  const [ariaAnnouncement, setAriaAnnouncement] = useState("");
 
   const canvasRef = useRef(null);
   const lastX = useRef(0);
   const lastY = useRef(0);
   const userStrokePoints = useRef([]);
+
+  // Annonce dynamique pour les lecteurs d'écran (A11y)
+  useEffect(() => {
+    if (viewMode !== "study" || cards.length === 0 || !cards[currentIndex]) return;
+    const currentCard = cards[currentIndex];
+    if (showAnswer) {
+      setAriaAnnouncement(
+        `Verso affiché. Traduction : ${currentCard.translation}. Romaji : ${currentCard.romaji || ''}. Saisissez votre niveau de maîtrise de 1 à 4.`
+      );
+    } else {
+      setAriaAnnouncement(
+        `Fiche ${currentIndex + 1} sur ${cards.length}. Recto : ${currentCard.context_note === 'character' ? 'Tracé correspondant pour ' + currentCard.romaji : currentCard.text_source}. Appuyez sur Espace pour afficher la réponse.`
+      );
+    }
+  }, [currentIndex, showAnswer, viewMode, cards]);
+
+  // Raccourcis clavier globaux pour la session de révision (A11y)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (viewMode !== "study" || cards.length === 0 || !cards[currentIndex]) return;
+      
+      const currentCard = cards[currentIndex];
+      
+      // Si la réponse n'est pas encore affichée, appuyer sur Espace ou Entrée l'affiche (si ce n'est pas une carte de tracé)
+      if (!showAnswer) {
+        if (e.key === " " || e.key === "Enter") {
+          if (currentCard.context_note !== 'character') {
+            e.preventDefault();
+            setShowAnswer(true);
+          }
+        }
+        return;
+      }
+      
+      // Si la réponse est affichée, les touches 1, 2, 3, 4 déclenchent les scores de révision
+      const key = e.key;
+      if (key === "1" || key === "&") {
+        e.preventDefault();
+        handleReview(1);
+      } else if (key === "2" || key === "é") {
+        e.preventDefault();
+        if (currentCard.context_note === 'character' && userDidNotKnow) {
+          handleReview(1);
+        } else {
+          handleReview(2);
+        }
+      } else if (key === "3" || key === "\"") {
+        e.preventDefault();
+        if (!(currentCard.context_note === 'character' && userDidNotKnow)) {
+          handleReview(3);
+        }
+      } else if (key === "4" || key === "'") {
+        e.preventDefault();
+        if (!(currentCard.context_note === 'character' && userDidNotKnow)) {
+          handleReview(4);
+        }
+      } else if (e.key === "Enter" || e.key === " ") {
+        if (currentCard.context_note === 'character' && userDidNotKnow) {
+          e.preventDefault();
+          handleReview(1);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [viewMode, currentIndex, showAnswer, cards, userDidNotKnow]);
 
   // Charger le tracé vectoriel KanjiVG
   const fetchStrokeOrder = async (char) => {
@@ -294,6 +364,14 @@ export default function Study() {
     setCurrentStrokeIndex(0);
     setUserDidNotKnow(false);
     drawGuidedGuide();
+  };
+
+  const handleCanvasKeyDown = (e) => {
+    if (e.key === 'Escape' || e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      resetWriting();
+      toast.success("Zone de dessin réinitialisée", { id: 'study-canvas-reset', duration: 1000 });
+    }
   };
 
   // Edit mode
@@ -713,6 +791,10 @@ export default function Study() {
                           ref={canvasRef}
                           width={300}
                           height={300}
+                          tabIndex={0}
+                          className="a11y-canvas"
+                          aria-label={`Zone d'écriture pour le tracé du caractère romaji ${cards[currentIndex]?.romaji || ''}. Appuyez sur Echap pour effacer votre tracé.`}
+                          onKeyDown={handleCanvasKeyDown}
                           onMouseDown={startDrawing}
                           onMouseMove={draw}
                           onMouseUp={stopDrawing}
@@ -1052,6 +1134,23 @@ export default function Study() {
             </div>
           </>
         )}
+      </div>
+      
+      {/* Zone d'annonce aria-live pour les lecteurs d'écran (A11y) */}
+      <div 
+        style={{
+          position: 'absolute',
+          width: '1px',
+          height: '1px',
+          padding: 0,
+          margin: '-1px',
+          overflow: 'hidden',
+          clip: 'rect(0, 0, 0, 0)',
+          border: 0
+        }}
+        aria-live="polite"
+      >
+        {ariaAnnouncement}
       </div>
     </div>
   );

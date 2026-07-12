@@ -431,6 +431,14 @@ function Alphabets() {
     }
   };
 
+  const handleCanvasKeyDown = (e) => {
+    if (e.key === 'Escape' || e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      resetWriting();
+      toast.success("Zone de dessin réinitialisée", { id: 'canvas-reset', duration: 1000 });
+    }
+  };
+
   const handleCharClick = (charObj) => {
     if (!charObj.char) return; // Case vide de la grille
     setSelectedChar(charObj);
@@ -489,6 +497,9 @@ function Alphabets() {
             <button
               key={index}
               onClick={() => handleCharClick(charObj)}
+              className="a11y-grid-btn"
+              aria-label={`${charObj.char}, prononcé ${charObj.romaji}. ${isLearned ? 'Caractère connu' : 'Non appris'}. ${isSelected ? 'Sélectionné' : 'Cliquer pour étudier'}`}
+              aria-pressed={isSelected}
               style={{
                 aspectRatio: '1/1',
                 background: btnBackground,
@@ -502,7 +513,6 @@ function Alphabets() {
                 color: btnColor,
                 transition: 'all 0.2s ease',
                 boxShadow: btnShadow,
-                outline: 'none',
                 padding: '6px'
               }}
               onMouseEnter={(e) => {
@@ -540,10 +550,14 @@ function Alphabets() {
         {/* Panneau gauche : Sélections & Grilles */}
         <section style={{ flex: 1.3, display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
           
-          <div style={{ display: 'flex', background: '#111113', borderRadius: '12px', padding: '6px', border: '1px solid #1f1f23', width: 'fit-content' }}>
+          <div role="tablist" aria-label="Sélection de l'alphabet" style={{ display: 'flex', background: '#111113', borderRadius: '12px', padding: '6px', border: '1px solid #1f1f23', width: 'fit-content' }}>
             {['hiragana', 'katakana', 'kanji'].map((tab) => (
               <button
                 key={tab}
+                role="tab"
+                aria-selected={activeTab === tab}
+                aria-controls="alphabet-tab-panel"
+                id={`tab-${tab}`}
                 onClick={() => setActiveTab(tab)}
                 style={{
                   background: activeTab === tab ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)' : 'transparent',
@@ -563,7 +577,9 @@ function Alphabets() {
             ))}
           </div>
 
-          {renderGrid()}
+          <div id="alphabet-tab-panel" role="tabpanel" aria-labelledby={`tab-${activeTab}`} style={{ width: '100%' }}>
+            {renderGrid()}
+          </div>
         </section>
 
         {/* Panneau droit : Fiche d'étude active */}
@@ -759,6 +775,10 @@ function Alphabets() {
                       ref={canvasRef}
                       width={300}
                       height={300}
+                      tabIndex={0}
+                      className="a11y-canvas"
+                      aria-label={`Zone de dessin pour le caractère ${selectedChar.char}. Mode ${mode === 'guided' ? 'guidé pas-à-pas' : 'libre'}. Appuyez sur Echap pour recommencer.`}
+                      onKeyDown={handleCanvasKeyDown}
                       onMouseDown={startDrawing}
                       onMouseMove={draw}
                       onMouseUp={stopDrawing}
