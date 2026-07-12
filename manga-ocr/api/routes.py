@@ -12,6 +12,8 @@ from services.tts_service import tts_service
 from services.detection_service import detection_service
 from core.config import DEFAULT_VOICE
 from api.deps import get_current_user
+from core.security import validate_uploaded_image
+from core.rate_limiter import limiter_strict
 
 router = APIRouter()
 
@@ -32,12 +34,14 @@ def cleanup_old_cache(db: Session):
         db.rollback()
         print(f"⚠️ Erreur lors du nettoyage du cache : {e}")
 
-@router.post("/detect")
+@router.post("/detect", dependencies=[Depends(limiter_strict)])
 async def detect_bubbles(
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db)
 ):
+    # Validation de sécurité du fichier image
+    await validate_uploaded_image(file)
     try:
         # Lancer le nettoyage en arrière-plan
         background_tasks.add_task(cleanup_old_cache, db)
@@ -69,7 +73,7 @@ async def detect_bubbles(
     except Exception as e:
         return {"error": str(e)}
 
-@router.post("/analyze")
+@router.post("/analyze", dependencies=[Depends(limiter_strict)])
 async def analyze_manga(
     file: UploadFile = File(...),
     lang: str = "ja",
@@ -80,6 +84,8 @@ async def analyze_manga(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    # Validation de sécurité du fichier image
+    await validate_uploaded_image(file)
     # Lancer le nettoyage en arrière-plan
     background_tasks.add_task(cleanup_old_cache, db)
     
@@ -226,7 +232,7 @@ async def analyze_manga(
     except Exception as e:
         return {"error": "Problème d'analyse", "details": str(e)}
 
-@router.get("/tts")
+@router.get("/tts", dependencies=[Depends(limiter_strict)])
 async def text_to_speech(text: str, voice: str = DEFAULT_VOICE):
     try:
         audio_data = await tts_service.generate_audio(text, voice)

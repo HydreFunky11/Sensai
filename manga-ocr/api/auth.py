@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr
 from db.database import get_db
 from db import models
 from core import security
+from core.rate_limiter import limiter_strict
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -19,7 +20,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
-@router.post("/register", response_model=Token)
+@router.post("/register", response_model=Token, dependencies=[Depends(limiter_strict)])
 def register(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
@@ -34,7 +35,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     access_token = security.create_access_token(data={"sub": new_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=Token, dependencies=[Depends(limiter_strict)])
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if not db_user or not security.verify_password(user.password, db_user.hashed_password):

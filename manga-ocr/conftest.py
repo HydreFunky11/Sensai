@@ -29,6 +29,8 @@ def db():
     # Détruire les tables pour laisser la base propre
     Base.metadata.drop_all(bind=engine)
 
+from core.rate_limiter import limiter_general, limiter_strict
+
 @pytest.fixture(scope="function")
 def client(db):
     # Surcharger la dépendance get_db pour injecter la base de test dans FastAPI
@@ -37,8 +39,15 @@ def client(db):
             yield db
         finally:
             pass
-            
+
+    # Surcharger les rate limiters pour éviter les blocages de requêtes en rafale lors des tests
+    async def dummy_limiter():
+        return
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[limiter_general] = dummy_limiter
+    app.dependency_overrides[limiter_strict] = dummy_limiter
+    
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
