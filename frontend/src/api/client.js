@@ -398,11 +398,20 @@ export async function getMangaFileBlob(mangaId) {
   return response.blob();
 }
 
-export async function importToLibrary(file, folderId = null) {
+export async function importToLibrary(file, folderId = null, title = null, pageStart = null, pageEnd = null) {
   const formData = new FormData();
   formData.append("file", file);
   if (folderId) {
     formData.append("folder_id", folderId);
+  }
+  if (title) {
+    formData.append("title", title);
+  }
+  if (pageStart !== null && pageStart !== undefined && pageStart !== "") {
+    formData.append("page_start", pageStart);
+  }
+  if (pageEnd !== null && pageEnd !== undefined && pageEnd !== "") {
+    formData.append("page_end", pageEnd);
   }
 
   const response = await fetch(`${BASE_URL}/library/import`, {

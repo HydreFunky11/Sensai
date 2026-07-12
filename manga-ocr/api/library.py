@@ -119,7 +119,15 @@ def delete_folder(folder_id: int, db: Session = Depends(get_db), current_user: m
     return {"message": "Dossier et son contenu supprimés avec succès"}
 
 @router.post("/import", response_model=MangaResponse, dependencies=[Depends(limiter_strict)])
-async def import_manga(file: UploadFile = File(...), folder_id: Optional[int] = Form(None), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+async def import_manga(
+    file: UploadFile = File(...),
+    folder_id: Optional[int] = Form(None),
+    title: Optional[str] = Form(None),
+    page_start: Optional[int] = Form(None),
+    page_end: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     # Validation de sécurité du fichier (manga image ou PDF complet jusqu'à 100 Mo)
     await validate_uploaded_manga(file)
     
@@ -127,12 +135,47 @@ async def import_manga(file: UploadFile = File(...), folder_id: Optional[int] = 
     filename = f"{uuid.uuid4().hex}.{ext}"
     file_path = os.path.join(UPLOAD_DIR, filename)
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    title = file.filename.rsplit('.', 1)[0]
+    # Lire le contenu du fichier uploadé
+    contents = await file.read()
     
-    # Génération de la miniature
+    # Si c'est un PDF et qu'une plage de pages est spécifiée, extraire les pages
+    pages_extracted = False
+    if ext.lower() == 'pdf' and page_start is not None and page_end is not None:
+        try:
+            src_doc = fitz.open(stream=contents, filetype="pdf")
+            total_pages = len(src_doc)
+            
+            # Validation des index de pages
+            if page_start < 1 or page_end > total_pages or page_start > page_end:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Plage de pages invalide. Le PDF contient {total_pages} pages."
+                )
+            
+            # Créer le nouveau PDF extrait
+            new_doc = fitz.open()
+            new_doc.insert_pdf(src_doc, from_page=page_start - 1, to_page=page_end - 1)
+            new_doc.save(file_path)
+            new_doc.close()
+            src_doc.close()
+            pages_extracted = True
+        except HTTPException as he:
+            raise he
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Erreur lors de la découpe des pages du PDF : {str(e)}"
+            )
+
+    # Si aucun découpage n'a été effectué, sauvegarder le fichier entier
+    if not pages_extracted:
+        with open(file_path, "wb") as buffer:
+            buffer.write(contents)
+
+    # Déterminer le titre personnalisé ou celui d'origine
+    manga_title = title.strip() if title and title.strip() else file.filename.rsplit('.', 1)[0]
+    
+    # Génération de la miniature (basée sur le fichier nouvellement créé/découpé)
     cover_b64 = generate_b64_thumbnail(file_path, ext)
     
     if folder_id:
@@ -144,7 +187,7 @@ async def import_manga(file: UploadFile = File(...), folder_id: Optional[int] = 
     db_manga = models.Manga(
         user_id=current_user.id,
         folder_id=folder_id,
-        title=title,
+        title=manga_title,
         file_path=file_path,
         cover_image=cover_b64
     )
