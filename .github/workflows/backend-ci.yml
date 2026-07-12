@@ -1,13 +1,18 @@
-name: SensAI CI/CD Pipeline
+name: SensAI Backend CI
 
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'manga-ocr/**'
+      - '.github/workflows/backend-ci.yml'
   pull_request:
     branches: [ main, develop ]
+    paths:
+      - 'manga-ocr/**'
+      - '.github/workflows/backend-ci.yml'
 
 jobs:
-  # --- JOB 1 : TESTS DU BACKEND ---
   backend-test:
     runs-on: ubuntu-latest
     steps:
@@ -50,38 +55,8 @@ jobs:
           cd manga-ocr
           python -m pytest --cov=. --cov-report=xml
 
-  # --- JOB 2 : TESTS & BUILD DU FRONTEND ---
-  frontend-test-and-build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install Frontend Dependencies
-        run: |
-          cd frontend
-          npm install
-
-      - name: Run Frontend Unit Tests
-        run: |
-          cd frontend
-          npm run test
-
-      - name: Build Frontend Production Package
-        run: |
-          cd frontend
-          npm run build
-
-  # --- JOB 3 : VALIDATION DES DOCKERFILES ---
-  docker-validation:
-    needs: [backend-test, frontend-test-and-build]
+  backend-docker-validation:
+    needs: backend-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -96,13 +71,5 @@ jobs:
         with:
           context: ./manga-ocr
           file: ./manga-ocr/Dockerfile
-          push: false # Ne pas pousser sans credentials, juste valider le build
-          tags: sensai-backend:latest
-
-      - name: Validate Frontend Docker Build
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
           push: false
-          tags: sensai-frontend:latest
+          tags: sensai-backend:latest
