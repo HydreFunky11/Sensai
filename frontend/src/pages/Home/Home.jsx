@@ -101,6 +101,7 @@ export default function Home() {
       isOpen: true,
       file: file,
       title: cleanTitle,
+      folderId: selectedFolderId || '',
       isPdf: isPdf,
       isSplitRange: false,
       pageStart: '',
@@ -109,7 +110,7 @@ export default function Home() {
   };
 
   const submitImport = async () => {
-    const { file, title, isSplitRange, pageStart, pageEnd } = importModal;
+    const { file, title, folderId, isSplitRange, pageStart, pageEnd } = importModal;
     if (!file) return;
 
     setImportModal(prev => ({ ...prev, isOpen: false }));
@@ -118,8 +119,9 @@ export default function Home() {
     try {
       const pStart = isSplitRange && pageStart !== '' ? parseInt(pageStart, 10) : null;
       const pEnd = isSplitRange && pageEnd !== '' ? parseInt(pageEnd, 10) : null;
+      const destFolderId = folderId !== '' ? parseInt(folderId, 10) : null;
 
-      await importToLibrary(file, selectedFolderId, title, pStart, pEnd);
+      await importToLibrary(file, destFolderId, title, pStart, pEnd);
       await loadLibrary(selectedFolderId, sortBy, order);
       toast.success("Document importé avec succès !");
     } catch (err) {
@@ -522,6 +524,21 @@ export default function Home() {
                 placeholder="Ex: My Hero Academia - Chapitre 1"
                 autoFocus
               />
+            </div>
+
+            <div style={{ marginBottom: '15px', marginTop: '15px' }}>
+              <label htmlFor="import-folder-select" style={{ display: 'block', color: '#7f8c8d', fontSize: '0.85rem', marginBottom: '5px', fontWeight: 'bold' }}>Dossier de destination</label>
+              <select 
+                id="import-folder-select"
+                value={importModal.folderId} 
+                onChange={e => setImportModal({ ...importModal, folderId: e.target.value })}
+                style={{ ...styles.modalInput, marginBottom: 0 }}
+              >
+                <option value="">📁 Tous (Racine)</option>
+                {folders.map(f => (
+                  <option key={f.id} value={f.id}>📁 {f.name}</option>
+                ))}
+              </select>
             </div>
 
             {importModal.isPdf && (

@@ -99,7 +99,7 @@ describe('Page Home - Modale d\'Importation', () => {
     expect(screen.getByText('Fin')).toBeInTheDocument();
   });
 
-  it('devrait appeler l\'API importToLibrary avec le titre personnalisé et la plage de pages au clic sur Importer', async () => {
+  it('devrait appeler l\'API importToLibrary avec le titre, le dossier et la plage de pages au clic sur Importer', async () => {
     render(<Home />);
 
     const file = new File(['pdf-data'], 'one_piece.pdf', { type: 'application/pdf' });
@@ -107,9 +107,16 @@ describe('Page Home - Modale d\'Importation', () => {
     
     fireEvent.change(fileInput, { target: { files: [file] } });
 
+    // Attendre que la liste des dossiers soit chargée dans la modale
+    await screen.findByRole('option', { name: /Dossier Test/ });
+
     // Saisir un titre personnalisé
     const titleInput = screen.getByPlaceholderText(/ex: My Hero Academia/i);
     fireEvent.change(titleInput, { target: { value: 'One Piece Tome 100' } });
+
+    // Sélectionner un dossier de destination (valeur 1, correspondant au Dossier Test mocké)
+    const folderSelect = screen.getByLabelText(/dossier de destination/i);
+    fireEvent.change(folderSelect, { target: { value: '1' } });
 
     // Sélectionner des pages (13 à 26)
     const radioSplit = screen.getByLabelText('Sélectionner des pages');
@@ -124,9 +131,9 @@ describe('Page Home - Modale d\'Importation', () => {
     const submitBtn = screen.getByRole('button', { name: 'Importer' });
     fireEvent.click(submitBtn);
 
-    // Vérifier que l'API est appelée avec les bons paramètres de découpage
+    // Vérifier que l'API est appelée avec les bons paramètres de découpage et de dossier de destination
     await waitFor(() => {
-      expect(importToLibrary).toHaveBeenCalledWith(file, null, 'One Piece Tome 100', 13, 26);
+      expect(importToLibrary).toHaveBeenCalledWith(file, 1, 'One Piece Tome 100', 13, 26);
     });
   });
 });
