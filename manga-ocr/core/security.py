@@ -67,3 +67,53 @@ async def validate_uploaded_image(file: UploadFile):
     
     # Repositionner une nouvelle fois le curseur pour la route principale
     await file.seek(0)
+
+import fitz  # PyMuPDF
+
+MAX_MANGA_SIZE = 100 * 1024 * 1024  # 100 Mo
+ALLOWED_MANGA_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
+
+async def validate_uploaded_manga(file: UploadFile):
+    # 1. Validation du type de contenu MIME
+    if file.content_type not in ALLOWED_MANGA_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Format de fichier non autorisé. Formats acceptés : PDF, JPEG, PNG, WEBP."
+        )
+    
+    # 2. Lecture du fichier pour vérification de la taille (max 100 Mo)
+    contents = await file.read()
+    if len(contents) > MAX_MANGA_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Le fichier dépasse la taille maximale autorisée de {MAX_MANGA_SIZE / (1024 * 1024)} Mo pour un manga."
+        )
+    
+    # Repositionner le curseur
+    await file.seek(0)
+
+    # 3. Vérification d'intégrité selon le type
+    if file.content_type == "application/pdf":
+        try:
+            # Vérifier si le PDF s'ouvre correctement en mémoire
+            doc = fitz.open(stream=contents, filetype="pdf")
+            if len(doc) == 0:
+                raise ValueError("PDF vide")
+            doc.close()
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Fichier PDF invalide ou corrompu."
+            )
+    else:
+        try:
+            img = Image.open(BytesIO(contents))
+            img.verify()
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Fichier image invalide ou corrompu (signature incorrecte)."
+            )
+    
+    # Repositionner une nouvelle fois le curseur
+    await file.seek(0)

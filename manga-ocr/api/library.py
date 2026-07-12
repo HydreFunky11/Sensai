@@ -12,6 +12,8 @@ from pydantic import BaseModel
 from db.database import get_db
 from db import models
 from api.deps import get_current_user
+from core.security import validate_uploaded_manga
+from core.rate_limiter import limiter_strict
 import uuid
 
 router = APIRouter(prefix="/library", tags=["library"])
@@ -116,8 +118,11 @@ def delete_folder(folder_id: int, db: Session = Depends(get_db), current_user: m
     db.commit()
     return {"message": "Dossier et son contenu supprimés avec succès"}
 
-@router.post("/import", response_model=MangaResponse)
+@router.post("/import", response_model=MangaResponse, dependencies=[Depends(limiter_strict)])
 async def import_manga(file: UploadFile = File(...), folder_id: Optional[int] = Form(None), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # Validation de sécurité du fichier (manga image ou PDF complet jusqu'à 100 Mo)
+    await validate_uploaded_manga(file)
+    
     ext = file.filename.split('.')[-1] if '.' in file.filename else ''
     filename = f"{uuid.uuid4().hex}.{ext}"
     file_path = os.path.join(UPLOAD_DIR, filename)
