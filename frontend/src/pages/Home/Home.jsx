@@ -27,6 +27,17 @@ export default function Home() {
   
   const [renameFolderModal, setRenameFolderModal] = useState({ isOpen: false, folder: null, name: '' });
   const [deleteFolderModal, setDeleteFolderModal] = useState({ isOpen: false, folder: null });
+  
+  // State pour la modale d'importation de manga (titre personnalisé + découpe PDF)
+  const [importModal, setImportModal] = useState({
+    isOpen: false,
+    file: null,
+    title: '',
+    isPdf: false,
+    isSplitRange: false,
+    pageStart: '',
+    pageEnd: ''
+  });
 
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -63,10 +74,9 @@ export default function Home() {
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
     try {
-      const folder = await createLibraryFolder(newFolderName);
-      setFolders([...folders, folder]);
+      await createLibraryFolder(newFolderName);
       setNewFolderName('');
-      setSelectedFolderId(folder.id);
+      await init();
       toast.success("Dossier créé avec succès !");
     } catch(e) {
       toast.error("Erreur création dossier");
@@ -78,13 +88,38 @@ export default function Home() {
     navigate('/login');
   };
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isPdf = ext === 'pdf';
+    // Titre par défaut sans extension
+    const cleanTitle = file.name.replace(/\.[^/.]+$/, "");
+
+    setImportModal({
+      isOpen: true,
+      file: file,
+      title: cleanTitle,
+      isPdf: isPdf,
+      isSplitRange: false,
+      pageStart: '',
+      pageEnd: ''
+    });
+  };
+
+  const submitImport = async () => {
+    const { file, title, isSplitRange, pageStart, pageEnd } = importModal;
+    if (!file) return;
+
+    setImportModal(prev => ({ ...prev, isOpen: false }));
     setImporting(true);
+
     try {
-      await importToLibrary(file, selectedFolderId);
+      const pStart = isSplitRange && pageStart !== '' ? parseInt(pageStart, 10) : null;
+      const pEnd = isSplitRange && pageEnd !== '' ? parseInt(pageEnd, 10) : null;
+
+      await importToLibrary(file, selectedFolderId, title, pStart, pEnd);
       await loadLibrary(selectedFolderId, sortBy, order);
       toast.success("Document importé avec succès !");
     } catch (err) {
@@ -466,6 +501,93 @@ export default function Home() {
             <div style={styles.modalActions}>
               <button onClick={() => setDeleteFolderModal({ isOpen: false, folder: null })} style={styles.btnCancel}>Annuler</button>
               <button onClick={submitDeleteFolder} style={{...styles.btnSave, background: '#e74c3c'}}>Oui, tout détruire</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL D'IMPORTATION AVEC OPTIONS */}
+      {importModal.isOpen && (
+        <div style={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="modal-import-title" onClick={() => setImportModal({ ...importModal, isOpen: false })}>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <h3 id="modal-import-title" style={{ marginTop: 0, color: '#2c3e50', fontSize: '1.25rem', marginBottom: '15px' }}>Importer une œuvre</h3>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', color: '#7f8c8d', fontSize: '0.85rem', marginBottom: '5px', fontWeight: 'bold' }}>Nom de l'œuvre</label>
+              <input 
+                type="text" 
+                value={importModal.title} 
+                onChange={e => setImportModal({ ...importModal, title: e.target.value })}
+                style={{ ...styles.modalInput, marginBottom: 0 }}
+                placeholder="Ex: My Hero Academia - Chapitre 1"
+                autoFocus
+              />
+            </div>
+
+            {importModal.isPdf && (
+              <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
+                <span style={{ display: 'block', color: '#2d3748', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px' }}>
+                  Options d'extraction PDF 📄
+                </span>
+                
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#4a5568', marginBottom: '8px' }}>
+                  <input 
+                    type="radio" 
+                    name="pdf-import-mode" 
+                    checked={!importModal.isSplitRange} 
+                    onChange={() => setImportModal({ ...importModal, isSplitRange: false })}
+                  />
+                  Tout le document
+                </label>
+                
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#4a5568', marginBottom: '8px' }}>
+                  <input 
+                    type="radio" 
+                    name="pdf-import-mode" 
+                    checked={importModal.isSplitRange} 
+                    onChange={() => setImportModal({ ...importModal, isSplitRange: true })}
+                  />
+                  Sélectionner des pages
+                </label>
+
+                {importModal.isSplitRange && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', color: '#718096', fontSize: '0.75rem', marginBottom: '3px' }}>Début</label>
+                      <input 
+                        type="number" 
+                        min="1"
+                        value={importModal.pageStart} 
+                        onChange={e => setImportModal({ ...importModal, pageStart: e.target.value })}
+                        style={{ ...styles.modalInput, padding: '6px 10px', marginBottom: 0 }}
+                        placeholder="1"
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', color: '#718096', fontSize: '0.75rem', marginBottom: '3px' }}>Fin</label>
+                      <input 
+                        type="number" 
+                        min="1"
+                        value={importModal.pageEnd} 
+                        onChange={e => setImportModal({ ...importModal, pageEnd: e.target.value })}
+                        style={{ ...styles.modalInput, padding: '6px 10px', marginBottom: 0 }}
+                        placeholder="12"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={styles.modalActions}>
+              <button onClick={() => setImportModal({ ...importModal, isOpen: false })} style={styles.btnCancel}>Annuler</button>
+              <button 
+                onClick={submitImport} 
+                disabled={importModal.title.trim() === '' || (importModal.isSplitRange && (!importModal.pageStart || !importModal.pageEnd))}
+                style={{ ...styles.btnSave, opacity: (importModal.title.trim() === '' || (importModal.isSplitRange && (!importModal.pageStart || !importModal.pageEnd))) ? 0.6 : 1 }}
+              >
+                Importer
+              </button>
             </div>
           </div>
         </div>
