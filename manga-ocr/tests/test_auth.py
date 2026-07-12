@@ -109,3 +109,41 @@ def test_update_profile(client):
     )
     assert update_fail.status_code == 400
     assert "déjà utilisée" in update_fail.json()["detail"]
+
+def test_delete_account(client):
+    # 1. Créer un utilisateur et obtenir son token
+    reg_response = client.post(
+        "/auth/register",
+        json={"email": "delete_me@example.com", "password": "password123"}
+    )
+    token = reg_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # 2. Supprimer le compte via la route DELETE /auth/me
+    delete_response = client.delete("/auth/me", headers=headers)
+    assert delete_response.status_code == 200
+    assert "supprimés" in delete_response.json()["message"]
+
+    # 3. Essayer de récupérer le profil : doit échouer avec HTTP 401 Unauthorized
+    me_response = client.get("/auth/me", headers=headers)
+    assert me_response.status_code == 401
+
+def test_export_user_data(client):
+    # 1. Créer un utilisateur et obtenir son token
+    reg_response = client.post(
+        "/auth/register",
+        json={"email": "export_me@example.com", "password": "password123"}
+    )
+    token = reg_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # 2. Exporter les données
+    export_response = client.get("/auth/me/export", headers=headers)
+    assert export_response.status_code == 200
+    data = export_response.json()
+    
+    # 3. Vérifier les sections clés de portabilité RGPD
+    assert "profile" in data
+    assert "library" in data
+    assert "srs_revision" in data
+    assert data["profile"]["email"] == "export_me@example.com"

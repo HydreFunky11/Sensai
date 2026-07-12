@@ -90,3 +90,90 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+import os
+
+@router.delete("/me")
+def delete_account(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # 1. Supprimer tous les fichiers mangas physiques de l'utilisateur sur le disque
+    for manga in current_user.mangas:
+        if manga.file_path and os.path.exists(manga.file_path):
+            try:
+                os.remove(manga.file_path)
+            except Exception:
+                pass
+
+    # 2. Supprimer les logs de révision et d'analyse liés
+    db.query(models.ReviewLog).filter(models.ReviewLog.user_id == current_user.id).delete()
+    db.query(models.DeckReviewLog).filter(models.DeckReviewLog.user_id == current_user.id).delete()
+    db.query(models.AnalysisLog).filter(models.AnalysisLog.user_id == current_user.id).delete()
+
+    # 3. Supprimer le compte utilisateur (les relations en cascade s'occupent des mangas, decks, flashcards et learned_characters)
+    db.delete(current_user)
+    db.commit()
+
+    return {"message": "Votre compte et toutes les données associées ont été définitivement supprimés."}
+
+@router.get("/me/export")
+def export_user_data(
+    current_user: models.User = Depends(get_current_user)
+):
+    # Structurer toutes les informations confidentielles de l'utilisateur au format standard portabilité RGPD
+    data = {
+        "profile": {
+            "email": current_user.email,
+            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+            "is_premium": current_user.is_premium
+        },
+        "library": {
+            "folders": [
+                {
+                    "name": folder.name,
+                    "mangas": [
+                        {
+                            "title": manga.title,
+                            "file_path": manga.file_path
+                        } for manga in folder.mangas
+                    ]
+                } for folder in current_user.folders
+            ],
+            "root_mangas": [
+                {
+                    "title": manga.title,
+                    "file_path": manga.file_path
+                } for manga in current_user.mangas if manga.folder_id is None
+            ]
+        },
+        "srs_revision": {
+            "learned_characters": [
+                {
+                    "character": char.character,
+                    "alphabet_type": char.alphabet_type,
+                    "learned_at": char.learned_at.isoformat() if char.learned_at else None
+                } for char in current_user.learned_characters
+            ],
+            "decks": [
+                {
+                    "title": deck.title,
+                    "description": deck.description,
+                    "cards": [
+                        {
+                            "text_source": card.text_source,
+                            "translation": card.translation,
+                            "romaji": card.romaji,
+                            "context_note": card.context_note,
+                            "review_stats": {
+                                "next_review_date": card.review_stats.next_review_date.isoformat() if card.review_stats and card.review_stats.next_review_date else None,
+                                "interval": card.review_stats.interval if card.review_stats else 0,
+                                "ease_factor": card.review_stats.ease_factor if card.review_stats else 2.5
+                            } if card.review_stats else None
+                        } for card in deck.cards
+                    ]
+                } for deck in current_user.decks
+            ]
+        }
+    }
+    return data

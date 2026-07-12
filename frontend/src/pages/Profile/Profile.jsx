@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { getMe, updateProfile, createCheckoutSession, createPortalSession } from '../../api/client';
+import { getMe, updateProfile, createCheckoutSession, createPortalSession, deleteAccount, exportUserData } from '../../api/client';
+import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../../components/Navbar/Navbar';
 import { toast } from 'react-hot-toast';
 
 export default function Profile() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -87,6 +89,46 @@ export default function Profile() {
       toast.error(err.message);
     } finally {
       setCheckoutLoading(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      const data = await exportUserData();
+      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`;
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", jsonString);
+      downloadAnchor.setAttribute("download", `sensai_rgpd_export_${user.email.replace(/@/g, '_')}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      toast.success("Vos données personnelles ont été exportées avec succès !");
+    } catch (err) {
+      toast.error(err.message || "Erreur lors de l'export des données");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const doubleConfirm = window.confirm(
+      "ATTENTION : Cette action est irréversible !\n\nEn supprimant votre compte, l'ensemble de vos dossiers, fiches de révisions, mangas et fichiers importés seront définitivement supprimés de nos serveurs.\n\nVoulez-vous vraiment continuer ?"
+    );
+    if (!doubleConfirm) return;
+
+    const emailConfirm = window.prompt(
+      `Pour confirmer la suppression, veuillez saisir votre adresse e-mail (${user.email}) :`
+    );
+    if (emailConfirm !== user.email) {
+      toast.error("Adresse e-mail incorrecte. La suppression du compte a été annulée.");
+      return;
+    }
+
+    try {
+      await deleteAccount();
+      toast.success("Votre compte et vos données ont été définitivement supprimés.");
+      localStorage.removeItem('token');
+      navigate('/login');
+    } catch (err) {
+      toast.error(err.message || "Erreur lors de la suppression du compte");
     }
   };
 
@@ -176,6 +218,28 @@ export default function Profile() {
               style={user?.is_premium ? styles.btnPortal : styles.btnUpgrade}
             >
               {checkoutLoading ? "Chargement..." : (user?.is_premium ? "⚙️ Gérer mon abonnement" : "👑 Passer à Premium (9.99€/mois)")}
+            </button>
+          </div>
+        </div>
+
+        {/* Section 3 : Confidentialité & RGPD */}
+        <div style={styles.card}>
+          <h2 style={styles.sectionTitle}>🛡️ Gestion des données (RGPD)</h2>
+          <p style={{ ...styles.billingText, marginBottom: '20px' }}>
+            Conformément au Règlement Général sur la Protection des Données (RGPD), vous pouvez exporter l'intégralité de vos informations (profil, dossiers de révisions, cartes et bibliothèque) au format standard JSON, ou demander la suppression définitive de votre compte.
+          </p>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <button 
+              onClick={handleExportData}
+              style={styles.btnExport}
+            >
+              📥 Exporter mes données (JSON)
+            </button>
+            <button 
+              onClick={handleDeleteAccount}
+              style={styles.btnDelete}
+            >
+              ⚠️ Supprimer mon compte
             </button>
           </div>
         </div>
@@ -354,5 +418,31 @@ const styles = {
     fontWeight: '700',
     transition: 'all 0.2s ease',
     outline: 'none'
+  },
+  btnExport: {
+    padding: '12px 24px',
+    background: '#1e3a8a',
+    border: '1px solid #3b82f6',
+    color: '#93c5fd',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '0.95rem',
+    fontWeight: '700',
+    transition: 'all 0.2s ease',
+    outline: 'none',
+    boxShadow: '0 4px 10px rgba(59, 130, 246, 0.15)'
+  },
+  btnDelete: {
+    padding: '12px 24px',
+    background: '#450a0a',
+    border: '1px solid #f87171',
+    color: '#fca5a5',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '0.95rem',
+    fontWeight: '700',
+    transition: 'all 0.2s ease',
+    outline: 'none',
+    boxShadow: '0 4px 10px rgba(239, 68, 68, 0.15)'
   }
 };

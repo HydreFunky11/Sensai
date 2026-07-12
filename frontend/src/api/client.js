@@ -288,6 +288,30 @@ export async function updateProfile(profileData) {
   return response.json();
 }
 
+export async function deleteAccount() {
+  const response = await fetch(`${BASE_URL}/auth/me`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de la suppression du compte");
+  }
+  return response.json();
+}
+
+export async function exportUserData() {
+  const response = await fetch(`${BASE_URL}/auth/me/export`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de l'exportation des données");
+  }
+  return response.json();
+}
+
 // --- LIBRARY ---
 
 export async function getLibrary(folderId = null, sortBy = 'date', order = 'desc') {
