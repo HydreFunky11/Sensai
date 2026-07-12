@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import router as general_router
 from api.auth import router as auth_router
@@ -7,11 +7,26 @@ from api.library import router as library_router
 from api.payments import router as payments_router
 from db.database import engine
 from db import models
+from core.rate_limiter import limiter_general
 
 # Création des tables dans la base de données
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="SensAI API")
+# Initialisation de l'API avec la dépendance de rate limiting globale
+app = FastAPI(
+    title="SensAI API",
+    dependencies=[Depends(limiter_general)]
+)
+
+# Middleware pour forcer les en-têtes HTTP de sécurité (Top 10 OWASP)
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 # Configuration CORS
 origins = [
