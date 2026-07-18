@@ -920,19 +920,19 @@ Ce diagramme de flux sequentiel sous forme verticale decrit la chronologie des e
 lorsqu'un utilisateur effectue une selection de bulle manga dans le lecteur.
 
 ```mermaid
-graph TD
-    subgraph FrontendUI["Frontend / UI"]
+flowchart TD
+    subgraph FrontendUI [Frontend / UI]
         U[1. Utilisateur : Dessine le cadre] --> F1[2. Frontend : Envoie les coordonnees]
         UI[10. Interface : Affiche la traduction] <-- F2[9. Frontend : Recoit la traduction JSON]
     end
 
-    subgraph BackendFastAPI["Backend FastAPI"]
+    subgraph BackendFastAPI [Backend FastAPI]
         F1 --> B1[3. Backend : Localise le fichier]
         B1 --> B2[4. Backend : Decoupe la zone]
         B4[8. Backend : Enregistre en cache] --> F2
     end
 
-    subgraph ServicesIA["Services Traitement IA"]
+    subgraph ServicesIA [Services Traitement IA]
         B2 --> MO1[5. Manga-OCR : Extrait le japonais]
         MO1 --> B3[6. Backend : Recupere le texte]
         B3 --> LLM1[7. Groq LLM : Traduit & decompose]
