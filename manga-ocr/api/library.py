@@ -15,8 +15,10 @@ from api.deps import get_current_user
 from core.security import validate_uploaded_manga
 from core.rate_limiter import limiter_strict
 import uuid
+import logging
 
 router = APIRouter(prefix="/library", tags=["library"])
+logger = logging.getLogger("sensai.library")
 
 UPLOAD_DIR = "uploads/library"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -128,6 +130,7 @@ async def import_manga(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    logger.info("Début importation manga pour %s : Nom d'origine = %s, Plage de pages = %s-%s", current_user.email, file.filename, page_start, page_end)
     # Validation de sécurité du fichier (manga image ou PDF complet jusqu'à 100 Mo)
     await validate_uploaded_manga(file)
     
@@ -147,6 +150,7 @@ async def import_manga(
             
             # Validation des index de pages
             if page_start < 1 or page_end > total_pages or page_start > page_end:
+                logger.warning("Échec découpe PDF pour %s : plage demandée %s-%s invalide (total de pages: %d)", current_user.email, page_start, page_end, total_pages)
                 raise HTTPException(
                     status_code=400,
                     detail=f"Plage de pages invalide. Le PDF contient {total_pages} pages."
@@ -159,9 +163,11 @@ async def import_manga(
             new_doc.close()
             src_doc.close()
             pages_extracted = True
+            logger.info("Découpage PDF réussi pour %s : extrait pages %d à %d", current_user.email, page_start, page_end)
         except HTTPException as he:
             raise he
         except Exception as e:
+            logger.error("Exception inattendue lors de la découpe du PDF pour %s : %s", current_user.email, str(e), exc_info=True)
             raise HTTPException(
                 status_code=500,
                 detail=f"Erreur lors de la découpe des pages du PDF : {str(e)}"
@@ -182,6 +188,7 @@ async def import_manga(
         # Verify folder ownership
         folder = db.query(models.MangaFolder).filter(models.MangaFolder.id == folder_id, models.MangaFolder.user_id == current_user.id).first()
         if not folder:
+            logger.warning("Dossier ID %d spécifié introuvable ou n'appartient pas à %s", folder_id, current_user.email)
             raise HTTPException(status_code=404, detail="Dossier introuvable")
 
     db_manga = models.Manga(
@@ -195,6 +202,7 @@ async def import_manga(
     db.commit()
     db.refresh(db_manga)
 
+    logger.info("Importation complétée avec succès pour %s. Manga ID = %d, Titre enregistré = '%s', Fichier stocké = %s", current_user.email, db_manga.id, manga_title, file_path)
     return db_manga
 
 @router.put("/{manga_id}/folder", response_model=MangaResponse)

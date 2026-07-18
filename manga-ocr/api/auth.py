@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
+import logging
 from db.database import get_db
 from db import models
 from core import security
 from core.rate_limiter import limiter_strict
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger("sensai.auth")
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -24,6 +26,7 @@ class Token(BaseModel):
 def register(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
+        logger.warning("Échec d'inscription : l'email %s est déjà enregistré", user.email)
         raise HTTPException(status_code=400, detail="Email déjà enregistré")
     
     hashed_password = security.get_password_hash(user.password)
@@ -32,6 +35,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     
+    logger.info("Nouvel utilisateur enregistré avec succès : %s", user.email)
     access_token = security.create_access_token(data={"sub": new_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -39,12 +43,14 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if not db_user or not security.verify_password(user.password, db_user.hashed_password):
+        logger.warning("Échec de connexion : email ou mot de passe incorrect pour %s", user.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou mot de passe incorrect",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    logger.info("Connexion réussie pour l'utilisateur : %s", db_user.email)
     access_token = security.create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -98,12 +104,15 @@ def delete_account(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    logger.info("Demande de suppression définitive du compte reçue pour : %s", current_user.email)
     # 1. Supprimer tous les fichiers mangas physiques de l'utilisateur sur le disque
+    manga_count = len(current_user.mangas)
     for manga in current_user.mangas:
         if manga.file_path and os.path.exists(manga.file_path):
             try:
                 os.remove(manga.file_path)
-            except Exception:
+            except Exception as e:
+                logger.error("Erreur de suppression du fichier manga %s : %s", manga.file_path, str(e))
                 pass
 
     # 2. Supprimer les logs de révision et d'analyse liés
@@ -112,15 +121,18 @@ def delete_account(
     db.query(models.AnalysisLog).filter(models.AnalysisLog.user_id == current_user.id).delete()
 
     # 3. Supprimer le compte utilisateur (les relations en cascade s'occupent des mangas, decks, flashcards et learned_characters)
+    user_email = current_user.email
     db.delete(current_user)
     db.commit()
 
+    logger.info("Compte %s et %d fichiers mangas associés supprimés définitivement de la base de données et du disque.", user_email, manga_count)
     return {"message": "Votre compte et toutes les données associées ont été définitivement supprimés."}
 
 @router.get("/me/export")
 def export_user_data(
     current_user: models.User = Depends(get_current_user)
 ):
+    logger.info("Exportation des données personnelles initiée pour : %s (RGPD Droit à la portabilité)", current_user.email)
     # Structurer toutes les informations confidentielles de l'utilisateur au format standard portabilité RGPD
     data = {
         "profile": {
