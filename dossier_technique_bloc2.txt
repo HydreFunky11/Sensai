@@ -888,6 +888,17 @@ erDiagram
 6.2 SCHEMA D'ARCHITECTURE ET RESEAU (DEPLOIEMENT DOCKER COMPOSE VERTICAL)
 --------------------------------------------------------------------------------
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#EEF2FF',
+    'primaryTextColor': '#312E81',
+    'primaryBorderColor': '#C7D2FE',
+    'lineColor': '#6366F1',
+    'secondaryColor': '#F9FAFB',
+    'tertiaryColor': '#F5F3FF'
+  }
+}}%%
 graph TD
     User((Utilisateur / Navigateur)) -->|Port 80/443| Nginx[Proxy Nginx]
 
@@ -920,6 +931,17 @@ Ce diagramme de flux sequentiel sous forme verticale decrit la chronologie des e
 lorsqu'un utilisateur effectue une selection de bulle manga dans le lecteur.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#EEF2FF',
+    'primaryTextColor': '#312E81',
+    'primaryBorderColor': '#C7D2FE',
+    'lineColor': '#6366F1',
+    'secondaryColor': '#F9FAFB',
+    'tertiaryColor': '#F5F3FF'
+  }
+}}%%
 flowchart TD
     subgraph FrontendUI [Frontend / UI]
         U[1. Utilisateur : Dessine le cadre]
