@@ -779,3 +779,148 @@ algorithme SM-2 pour ancrer le vocabulaire dans votre memoire a long terme.
     - Des que le caractere est correctement trace, le Verso apparait. Saisissez votre note
       SM-2 pour passer a la suite.
 ================================================================================
+PARTIE VI : DIAGRAMMES ET SCHEMAS TECHNIQUES (CODES MERMAID)
+================================================================================
+
+Ces codes peuvent etre copies et colles sur le site https://mermaid.live ou
+dans un plugin Google Docs pour generer automatiquement des graphiques vectoriels.
+
+--------------------------------------------------------------------------------
+6.1 DIAGRAMME DE RELATION DE BASE DE DONNEES (MCD / MLD RELATIONNEL)
+--------------------------------------------------------------------------------
+```mermaid
+erDiagram
+    users {
+        int id PK
+        string email
+        string hashed_password
+        string stripe_customer_id
+        boolean is_premium
+        datetime created_at
+    }
+    manga_folders {
+        int id PK
+        int user_id FK
+        string name
+    }
+    mangas {
+        int id PK
+        int user_id FK
+        int folder_id FK
+        string title
+        string file_path
+        string cover_image
+    }
+    decks {
+        int id PK
+        int user_id FK
+        string title
+        string description
+    }
+    flashcards {
+        int id PK
+        int deck_id FK
+        string text_source
+        string translation
+        string romaji
+        json breakdown
+        string context_note
+        string image_crop_path
+    }
+    review_stats {
+        int id PK
+        int flashcard_id FK
+        datetime next_review_date
+        int interval
+        float ease_factor
+    }
+    learned_characters {
+        int id PK
+        int user_id FK
+        string character
+        string alphabet_type
+        datetime learned_at
+    }
+    review_logs {
+        int id PK
+        int user_id FK
+        int flashcard_id FK
+        int quality
+        datetime reviewed_at
+    }
+    deck_review_logs {
+        int id PK
+        int user_id FK
+        int deck_id FK
+        boolean is_free_review
+        datetime reviewed_at
+    }
+    analysis_logs {
+        int id PK
+        int user_id FK
+        datetime created_at
+    }
+
+    users ||--o{ mangas : "importe"
+    users ||--o{ decks : "possede"
+    users ||--o{ learned_characters : "apprend"
+    users ||--o{ manga_folders : "organise"
+    manga_folders ||--o{ mangas : "contient"
+    decks ||--o{ flashcards : "contient"
+    flashcards ||--o| review_stats : "a"
+    users ||--o{ review_logs : "genere"
+    users ||--o{ deck_review_logs : "genere"
+    users ||--o{ analysis_logs : "consomme"
+```
+
+--------------------------------------------------------------------------------
+6.2 SCHEMA D'ARCHITECTURE ET RESEAU (DEPLOIEMENT DOCKER COMPOSE)
+--------------------------------------------------------------------------------
+```mermaid
+graph TD
+    User((Utilisateur / Navigateur)) -->|Port 80/443| Nginx[Proxy Nginx / Frontend React]
+    subgraph Infrastructure Docker Compose
+        Nginx -->|Sert le code statique| React[Client React SPA]
+        Nginx -->|Redirige les requetes /api| FastAPI[Backend FastAPI Python]
+        FastAPI -->|Stockage local des fichiers mangas| Disk[(Espace Disque Local /uploads)]
+        FastAPI -->|Requetes SQL SQLAlchemy| SQLite[(Base de donnees SQLite sensai.db)]
+        FastAPI -->|Analyse OCR locale| MangaOCR[Service IA Manga-OCR]
+    end
+    FastAPI -->|Traduction LLM contextualisee| Groq[API Groq / LLM Llama3]
+    FastAPI -->|Gestion abonnements / webhooks| Stripe[API Stripe / Passerelle de paiement]
+    React -->|Chargement SVG des tracés de lettres| KanjiVG[GitHub KanjiVG / Depots SVG]
+```
+
+--------------------------------------------------------------------------------
+6.3 DIAGRAMME DE SEQUENCE UML (DESSIN DE BULLE OCR ET TRADUCTION)
+--------------------------------------------------------------------------------
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Utilisateur
+    participant F as Frontend (Reader React)
+    participant B as Backend (FastAPI)
+    participant MO as IA Local (Manga-OCR)
+    participant LLM as API Groq (LLM)
+    participant DB as Base de donnees (SQLite)
+
+    U->>F: Dessine un cadre de selection sur une bulle de manga
+    F->>B: POST /ocr/translate (Coordonnees box, image ID)
+    activate B
+    B->>DB: Recupere le chemin d'acces du manga
+    DB-->>B: Retourne le chemin du fichier image/PDF
+    B->>B: Decoupe la zone de l'image (Pillow/fitz)
+    B->>MO: Transmet l'image decoupée (Manga-OCR)
+    activate MO
+    MO-->>B: Retourne le texte japonais brut transcrit
+    deactivate MO
+    B->>LLM: Envoie le japonais pour traduction contextualisee
+    activate LLM
+    LLM-->>B: Retourne le JSON (Traduction, Romaji, Decoupage grammatical)
+    deactivate LLM
+    B->>DB: Stocke l'analyse dans la table de cache de traduction
+    B-->>F: Retourne la reponse JSON structuree
+    deactivate B
+    F-->>U: Affiche le panneau lateral de traduction et dictionnaire
+```
+================================================================================
