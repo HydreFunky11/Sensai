@@ -889,26 +889,28 @@ erDiagram
 --------------------------------------------------------------------------------
 ```mermaid
 graph TD
-    User((Utilisateur / Navigateur)) -->|Port 80/443| Nginx[Proxy Nginx / Frontend React]
+    User((Utilisateur / Navigateur)) -->|Port 80/443| Nginx[Proxy Nginx]
 
-    subgraph Infrastructure Docker Compose
-        Nginx -->|Sert le code statique| React[Client React SPA]
-        Nginx -->|Redirige les requetes /api| FastAPI[Backend FastAPI Python]
-        
-        FastAPI -->|Requetes SQL SQLAlchemy| SQLite[(Base de donnees SQLite sensai.db)]
-        FastAPI -->|Stockage local des fichiers mangas| Disk[(Espace Disque Local /uploads)]
-        FastAPI -->|Analyse OCR locale| MangaOCR[Service IA Manga-OCR]
-    end
+    Nginx -->|Sert le code statique| React[Client React SPA]
+    Nginx -->|Redirige les requetes /api| FastAPI[Backend FastAPI Python]
+    
+    %% Relations fonctionnelles du Backend
+    FastAPI -->|Requetes SQL SQLAlchemy| SQLite[(Base de donnees SQLite sensai.db)]
+    FastAPI -->|Stockage local des mangas| Disk[(Espace Disque Local /uploads)]
+    FastAPI -->|Analyse OCR locale| MangaOCR[Service IA Manga-OCR]
 
-    subgraph Services Externes Cloud
-        KanjiVG[GitHub KanjiVG / Depots SVG]
-        Groq[API Groq / LLM Llama3]
-        Stripe[API Stripe / Passerelle de paiement]
-    end
+    %% Services Externes Cloud
+    React -.->|Chargement SVG des tracés de lettres| KanjiVG[GitHub KanjiVG / Depots SVG]
+    FastAPI -.->|Traduction LLM contextualisee| Groq[API Groq / LLM Llama3]
+    FastAPI -.->|Gestion abonnements / webhooks| Stripe[API Stripe / Passerelle de paiement]
 
-    React -.->|Chargement SVG des tracés de lettres| KanjiVG
-    FastAPI -.->|Traduction LLM contextualisee| Groq
-    FastAPI -.->|Gestion abonnements / webhooks| Stripe
+    %% Relations invisibles pour forcer un empilement strictement vertical (sans elargissement)
+    React ~~~ FastAPI
+    SQLite ~~~ Disk
+    Disk ~~~ MangaOCR
+    MangaOCR ~~~ KanjiVG
+    KanjiVG ~~~ Groq
+    Groq ~~~ Stripe
 ```
 
 --------------------------------------------------------------------------------
