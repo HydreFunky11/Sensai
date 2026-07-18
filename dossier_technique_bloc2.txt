@@ -922,21 +922,37 @@ lorsqu'un utilisateur effectue une selection de bulle manga dans le lecteur.
 ```mermaid
 flowchart TD
     subgraph FrontendUI [Frontend / UI]
-        U[1. Utilisateur : Dessine le cadre] --> F1[2. Frontend : Envoie les coordonnees]
-        UI[10. Interface : Affiche la traduction] <-- F2[9. Frontend : Recoit la traduction JSON]
+        U[1. Utilisateur : Dessine le cadre]
+        F1[2. Frontend : Envoie les coordonnees]
+        F2[9. Frontend : Recoit la traduction JSON]
+        UI[10. Interface : Affiche la traduction]
+        
+        U --> F1
+        F2 --> UI
     end
 
     subgraph BackendFastAPI [Backend FastAPI]
-        F1 --> B1[3. Backend : Localise le fichier]
-        B1 --> B2[4. Backend : Decoupe la zone]
-        B4[8. Backend : Enregistre en cache] --> F2
+        B1[3. Backend : Localise le fichier]
+        B2[4. Backend : Decoupe la zone]
+        B3[6. Backend : Recupere le texte]
+        B4[8. Backend : Enregistre en cache]
+        
+        B1 --> B2
+        B3 --> B4
     end
 
     subgraph ServicesIA [Services Traitement IA]
-        B2 --> MO1[5. Manga-OCR : Extrait le japonais]
-        MO1 --> B3[6. Backend : Recupere le texte]
-        B3 --> LLM1[7. Groq LLM : Traduit & decompose]
-        LLM1 --> B4
+        MO1[5. Manga-OCR : Extrait le japonais]
+        LLM1[7. Groq LLM : Traduit & decompose]
+        
+        MO1 --> LLM1
     end
+
+    %% Connexions entre subgraphs (declarees a la fin pour eviter les bugs d'affichage de boite)
+    F1 --> B1
+    B2 --> MO1
+    MO1 --> B3
+    LLM1 --> B4
+    B4 --> F2
 ```
 ================================================================================
