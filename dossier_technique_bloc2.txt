@@ -1,0 +1,478 @@
+================================================================================
+DOSSIER TECHNIQUE - BLOC 2 : CONCEPTION ET DEVELOPPEMENT SECURISE (SENSAI)
+================================================================================
+
+Ce document regroupe le Cahier de Recettes, le Plan de Correction des Bogues
+ainsi que les Manuels Techniques de Deploiement, d'Exploitation et Utilisateur
+de l'application SensAI (systeme d'apprentissage du japonais par OCR sur mangas).
+
+--------------------------------------------------------------------------------
+TABLE DES MATIERES
+--------------------------------------------------------------------------------
+1. CAHIER DE RECETTES (MATRICE DE TESTS FONCTIONNELS ET D'INTEGRATION)
+2. PLAN DE CORRECTION DES BOGUES (REGISTRE DES ANOMALIES RESOLUES)
+3. MANUEL TECHNIQUE DE DEPLOIEMENT (DOCKER / DEV-OPS)
+4. MANUEL D'EXPLOITATION, SURVEILLANCE ET MAINTENANCE
+5. GUIDE DE L'UTILISATEUR
+
+================================================================================
+1. CAHIER DE RECETTES (MATRICE DE TESTS FONCTIONNELS ET D'INTEGRATION)
+================================================================================
+
+Chaque cas de test ci-dessous decrit le scenario execute pour valider le bon
+fonctionnement, la securite, l'accessibilite et le respect de la reglementation
+RGPD au sein de l'application SensAI.
+
+--------------------------------------------------------------------------------
+FICHE DE TEST ID : T-001 | NOM : Inscription d'un utilisateur et securite
+--------------------------------------------------------------------------------
+- Type : Securite / Fonctionnel
+- Prerequis : Le serveur backend FastAPI est en cours d'execution.
+- Etapes de reproduction :
+  1. Envoyer une requete POST sur '/auth/register' avec un email au format valide
+     (ex: user@example.com) et un mot de passe robuste (ex: Password123!).
+  2. Tenter de s'inscrire une seconde fois avec le meme email.
+  3. Verifier dans la base de donnees sqlite 'sensai.db' comment le mot de passe
+     est stocke.
+- Resultat attendu :
+  * Premier enregistrement : Code HTTP 200 (Success) et generation d'un jeton JWT.
+  * Deuxieme enregistrement : Code HTTP 400 (Bad Request) avec message d'erreur.
+  * Dans la base de donnees, le mot de passe doit etre strictement chiffre (hache)
+    sous forme de hash bcrypt asymetrique. Aucun mot de passe en clair ne doit apparaitre.
+- Statut : VALIDE
+
+--------------------------------------------------------------------------------
+FICHE DE TEST ID : T-002 | NOM : Authentification et jetons de securite JWT
+--------------------------------------------------------------------------------
+- Type : Securite / Session
+- Prerequis : Un compte utilisateur a ete prealablement cree.
+- Etapes de reproduction :
+  1. Envoyer une requete POST sur '/auth/login' avec des identifiants valides.
+  2. Effectuer une requete sur '/auth/login' avec un mauvais mot de passe.
+  3. Tenter d'acceder a une route protegee (ex: '/library') sans fournir de jeton.
+  4. Acceder a la meme route protegee en passant le jeton dans les en-tetes HTTP.
+- Resultat attendu :
+  * Etape 1 : Connexion reussie, retour d'un jeton JWT contenant la date d'expiration.
+  * Etape 2 : HTTP 401 Unauthorized, acces refuse.
+  * Etape 3 : HTTP 401 Unauthorized, acces bloque.
+  * Etape 4 : HTTP 200 Success, acces autorise aux donnees utilisateur.
+- Statut : VALIDE
+
+--------------------------------------------------------------------------------
+FICHE DE TEST ID : T-003 | NOM : Importation de Manga - Securite et types de fichiers
+--------------------------------------------------------------------------------
+- Type : Securite / Importation
+- Prerequis : Utilisateur connecte avec jeton valide.
+- Etapes de reproduction :
+  1. Uploader une image de manga valide (.png ou .jpg) de 2 Mo.
+  2. Uploader un script executable malveillant en le renommant (ex: malware.exe.jpg).
+  3. Uploader un fichier de plus de 100 Mo (limite maximale pour les mangas PDF).
+- Resultat attendu :
+  * Etape 1 : Fichier accepte, stocke de maniere securisee avec un UUID unique genere
+    par le backend (anti-collision et dissimulation de nom), miniature generee.
+  * Etape 2 : Fichier rejete avec HTTP 400. Le backend valide la signature interne
+    du fichier (MIME/Pillow header) et non pas seulement l'extension.
+  * Etape 3 : Fichier rejete avec HTTP 400 pour depassement de la taille limite.
+- Statut : VALIDE
+
+--------------------------------------------------------------------------------
+FICHE DE TEST ID : T-004 | NOM : Decoupage dynamique et personnalisation a l'import
+--------------------------------------------------------------------------------
+- Type : Fonctionnel / Importation
+- Prerequis : Un fichier manga de type PDF de plusieurs pages.
+- Etapes de reproduction :
+  1. Choisir le fichier PDF a uploader sur l'interface de la bibliotheque.
+  2. Saisir un titre personnalise dans le champ de renommage.
+  3. Choisir le dossier de destination dans le menu deroulant.
+  4. Choisir l'option "Extraire une plage de pages" et entrer les pages 1-12.
+  5. Valider l'importation.
+- Resultat attendu :
+  * Le backend verifie les indices de pages par rapport au nombre reel de pages.
+  * PyMuPDF (fitz) extrait uniquement les pages 1 a 12 en memoire.
+  * Seul le fichier decoupe est ecrit sur le disque du serveur (economie d'espace).
+  * Le manga est bien range dans le dossier choisi avec son titre personnalise.
+- Statut : VALIDE
+
+--------------------------------------------------------------------------------
+FICHE DE TEST ID : T-005 | NOM : OCR japonais local et traduction contextualisee
+--------------------------------------------------------------------------------
+- Type : Integration / Intelligence Artificielle
+- Prerequis : Un manga a ete importe dans la bibliotheque.
+- Etapes de reproduction :
+  1. Ouvrir le manga dans le lecteur.
+  2. Utiliser l'outil de selection pour entourer une bulle de texte japonais.
+  3. Envoyer la zone selectionnee au backend.
+- Resultat attendu :
+  * Le modele local Manga-OCR extrait correctement les kana/kanji de l'image.
+  * Le texte japonais extrait est envoye au LLM (Groq) qui renvoie une traduction
+    francaise precise adaptee au contexte de la scene, la prononciation romaji,
+    et un decoupage grammatical detaille mot par mot.
+- Statut : VALIDE
+
+--------------------------------------------------------------------------------
+FICHE DE TEST ID : T-006 | NOM : Apprentissage des Alphabets et Canvas guidé
+--------------------------------------------------------------------------------
+- Type : Fonctionnel / Interface
+- Prerequis : Acceder a la page "Alphabets".
+- Etapes de reproduction :
+  1. Choisir l'alphabet Hiragana et selectionner la lettre 'あ' (a).
+  2. Dessiner le premier trait de la lettre sur le canvas d'ecriture tactile.
+  3. Dessiner un trait incorrect ou dans le mauvais ordre.
+  4. Cliquer sur le bouton "Je connais".
+- Resultat attendu :
+  * Etape 2 : Le trait correct est valide en vert grace aux coordonnees vectorielles
+    KanjiVG integrees. L'etape suivante s'affiche (pas-a-pas).
+  * Etape 3 : Le trait est refuse en rouge, toast de guidage affiche.
+  * Etape 4 : La lettre est marquee comme apprise, mise a jour des statistiques de
+    progression visible a l'ecran.
+- Statut : VALIDE
+
+--------------------------------------------------------------------------------
+FICHE DE TEST ID : T-007 | NOM : Session de revision SRS et algorithme SM-2
+--------------------------------------------------------------------------------
+- Type : Algorithmique / Fonctionnel
+- Prerequis : Avoir des cartes de flashcard en attente de revision (due).
+- Etapes de reproduction :
+  1. Ouvrir la session de revision sur un dossier.
+  2. Si la carte est de type standard : evaluer son rappel.
+  3. Si la carte est de type caractere japonais : tracer le caractere correspondant
+     au Romaji affiche.
+  4. Choisir la note de difficulte (de 1 a 4).
+- Resultat attendu :
+  * Pour un caractere : l'ecriture doit obligatoirement etre completee et validee
+    sur le canvas pour reveler le verso (reponse).
+  * L'algorithme de repetition espacee SM-2 recalcule l'intervalle de rappel en
+    jours, la date de prochaine revision et le facteur d'aisance (E-Factor) en
+    base de donnees en fonction de la note de difficulte attribuee.
+- Statut : VALIDE
+
+--------------------------------------------------------------------------------
+FICHE DE TEST ID : T-008 | NOM : Droits RGPD - Portabilite des donnees (Export)
+--------------------------------------------------------------------------------
+- Type : Reglementaire / Securite
+- Prerequis : Utilisateur enregistre possédant des donnees (mangas, flashcards).
+- Etapes de reproduction :
+  1. Acceder a l'onglet "Profil".
+  2. Cliquer sur le bouton "Exporter mes donnees (JSON)".
+  3. Ouvrir le fichier JSON genere et verifier les informations.
+- Resultat attendu :
+  * Le backend compile en un seul objet les donnees de profil, la liste des dossiers
+    et mangas de la bibliotheque, les caracteres appris, les flashcards et leurs
+    statistiques de revisions SM-2.
+  * Un fichier JSON standardise se telecharge automatiquement sur le poste client,
+    sans fuite de donnees d'autres utilisateurs.
+- Statut : VALIDE
+
+--------------------------------------------------------------------------------
+FICHE DE TEST ID : T-009 | NOM : Droits RGPD - Droit a l'oubli (Suppression de compte)
+--------------------------------------------------------------------------------
+- Type : Reglementaire / Securite
+- Prerequis : L'utilisateur possede des fichiers sur le serveur et des lignes en BDD.
+- Etapes de reproduction :
+  1. Aller sur le profil et cliquer sur "Supprimer mon compte".
+  2. Valider la confirmation et saisir une fausse adresse email pour confirmer.
+  3. Saisir l'adresse email correcte de l'utilisateur pour confirmer.
+  4. Verifier dans la base de donnees et sur le disque du serveur la presence des
+     donnees de cet utilisateur.
+- Resultat attendu :
+  * Etape 2 : Annulation securisee de la procedure (email invalide).
+  * Etape 3 : Suppression lancee, redirection automatique vers '/login'.
+  * Le backend a supprime tous les dossiers de l'utilisateur, ses fiches, ses
+    learned characters, ses tables de logs d'utilisation et ses mangas.
+  * Les fichiers mangas physiques ont ete definitivement effaces du disque du serveur
+    (nettoyage de l'espace de stockage).
+- Statut : VALIDE
+
+--------------------------------------------------------------------------------
+FICHE DE TEST ID : T-010 | NOM : Accessibilite Clavier & Lecteurs d'ecran (A11y)
+--------------------------------------------------------------------------------
+- Type : Ergonomie / Accessibilite (RGAA / OPQUAST)
+- Prerequis : Avoir une session de revision ou d'apprentissage active.
+- Etapes de reproduction :
+  1. Naviguer sur l'application a l'aide de la touche 'Tab' uniquement.
+  2. Pendant les revisions, appuyer sur 'Entree' pour reveler le verso.
+  3. Evaluer sa reponse en pressant les touches '1', '2', '3' ou '4'.
+  4. Sur le canvas de dessin, appuyer sur 'Echap'.
+- Resultat attendu :
+  * Etape 1 : Un anneau de focus violet hautement visible entoure chaque element
+    actif (bouton, lien, canvas). Les balises ARIA permettent aux lecteurs d'ecran
+    de dicter correctement le role et le statut de chaque element.
+  * Etape 2 et 3 : Les raccourcis clavier globaux interceptent l'evenement, revelent
+    la reponse et enregistrent le niveau SM-2 sans clic souris.
+  * Etape 4 : Le tracé du canvas est integralement reinitialise de maniere accessible.
+- Statut : VALIDE
+
+--------------------------------------------------------------------------------
+FICHE DE TEST ID : T-011 | NOM : Observabilite & Robustesse aux crashs (Headers 500)
+--------------------------------------------------------------------------------
+- Type : Securite / Exploitation
+- Prerequis : Le fichier journal 'sensai.log' est configure.
+- Etapes de reproduction :
+  1. Provoquer une exception interne imprevue dans le code backend (ex: simuler
+     un plantage de connexion BDD).
+  2. Interroger la route contenant l'exception.
+  3. Inspecter la reponse HTTP et le fichier 'sensai.log'.
+- Resultat attendu :
+  * La reponse HTTP renvoyee au client de test ou au navigateur doit etre un code
+    anonyme HTTP 500 sans details systemes ("Une erreur serveur interne est survenue").
+  * Le fichier 'sensai.log' contient l'horodatage precis, la severite 'ERROR',
+    le nom de la route plantée et l'integralite de la stack trace python pour
+    le debogage.
+- Statut : VALIDE
+
+
+================================================================================
+2. PLAN DE CORRECTION DES BOGUES (REGISTRE DES ANOMALIES RESOLUES)
+================================================================================
+
+Voici le registre des anomalies critiques rencontrees lors du developpement de
+l'application SensAI et les correctifs techniques qui y ont ete apportes pour
+garantir la stabilite et la qualite de l'application.
+
+--------------------------------------------------------------------------------
+ANOMALIE ID : B-001 | COMPOSANT : Backend - Importation de Manga
+--------------------------------------------------------------------------------
+- Description du probleme :
+  Lors de l'importation de gros volumes de pages manga (tomes complets sous format PDF
+  de plus de 50 Mo), le serveur backend FastAPI rencontrait des debordements memoire
+  (Out Of Memory) et plantait en raison du chargement en memoire vive de l'integralite
+  du document pour traitement.
+- Impact :
+  Indisponibilite du service backend, crash du conteneur Docker.
+- Resolution technique :
+  Mise en place de l'extraction par plage de pages avec PyMuPDF (fitz) en flux.
+  Les pages selectionnees par l'utilisateur (ex: 1-12) sont desormais lues et
+  extraites directement en memoire tampon sans ecriture de fichier temporaire
+  complet sur le disque, et le fichier final decoupe est instantanement ecrit.
+  Mise en place de limites strictes de taille (100 Mo max pour PDF, 8 Mo max pour images).
+
+--------------------------------------------------------------------------------
+ANOMALIE ID : B-002 | COMPOSANT : Frontend - Apprentissage des Alphabets
+--------------------------------------------------------------------------------
+- Description du probleme :
+  Apres avoir passe l'onglet des Alphabets japonais en WAI-ARIA semantique (modification
+  des boutons en roles d'onglets 'tablist' et 'tab' pour l'accessibilite), la suite de
+  tests d'integration Vitest a casse car elle ne parvenait plus a trouver les boutons
+  de navigation.
+- Impact :
+  Pipeline de CI/CD bloque à l'etape des tests unitaires du frontend.
+- Resolution technique :
+  Mise a jour de 'Alphabets.test.jsx' pour remplacer la methode de requete obsolete
+  'screen.getByRole("button", { name: /hiragana/i })' par la requete semantique correcte
+  'screen.getByRole("tab", { name: /hiragana/i })'. Les tests d'accessibilite passent
+  desormais et valident la structure ARIA.
+
+--------------------------------------------------------------------------------
+ANOMALIE ID : B-003 | COMPOSANT : Frontend - Revision & Canvas de Dessin
+--------------------------------------------------------------------------------
+- Description du probleme :
+  Les utilisateurs malvoyants ou navigant exclusivement au clavier etaient bloques
+  lors des sessions de revision de caracteres : le canvas de dessin n'etait pas
+  focalisable au clavier, ce qui empechait les lecteurs d'ecran d'annoncer son existence
+  et interdisait aux utilisateurs d'effacer leurs tracés sans cliquer sur le bouton physique.
+- Impact :
+  Non-conformite stricte RGAA et OPQUAST de la page d'etudes.
+- Resolution technique :
+  - Ajout de l'attribut 'tabIndex={0}' sur l'element '<canvas>' pour le rendre focusable.
+  - Ajout d'une balise 'aria-label' dynamique adaptant son explication selon le romaji actif.
+  - Ajout de l'evenement clavier 'onKeyDown' ecoutant les touches 'Escape', 'Delete'
+    et 'Backspace' pour effacer la zone de dessin au clavier.
+  - Ajout d'une zone 'aria-live="polite"' pour guider l'utilisateur a chaque etape.
+
+--------------------------------------------------------------------------------
+ANOMALIE ID : B-004 | COMPOSANT : CI/CD - Pipeline GitHub Actions
+--------------------------------------------------------------------------------
+- Description du probleme :
+  Le pipeline CI/CD initial de GitHub Actions depassait regulierement l'espace disque
+  alloue sur les machines virtuelles gratuites d'Ubuntu, car l'installation des dependances
+  d'intelligence artificielle (PyTorch et le modele d'OCR) saturait le disque dur du runner.
+- Impact :
+  Echec systematique des builds et impossibilite de deployer.
+- Resolution technique :
+  - Ajout d'un script de nettoyage de l'espace disque au debut du pipeline de CI/CD
+    (suppression des modules dotnet, android et ghc inutilises sur le runner).
+  - Force l'installation de la version allegee de PyTorch CPU (sans support CUDA pour cartes
+    graphiques Nvidia) en definissant la variable 'PIP_EXTRA_INDEX_URL' vers le depot CPU
+    de PyTorch.
+  - Utilisation du drapeau '--no-cache-dir' lors de l'installation pip pour economiser l'espace.
+
+
+================================================================================
+3. MANUEL TECHNIQUE DE DEPLOIEMENT (DOCKER / DEV-OPS)
+================================================================================
+
+Ce manuel detaille la procedure d'installation de l'application SensAI sur un
+serveur Linux de production, a l'aide de Docker et Docker Compose.
+
+--------------------------------------------------------------------------------
+A. PREREQUIS SYSTEME
+--------------------------------------------------------------------------------
+- Systeme d'exploitation : Ubuntu 22.04 LTS ou superieur
+- Outils requis :
+  * Git (derniere version)
+  * Docker Engine (v20.10+)
+  * Docker Compose (v2.0+)
+- Ports reseaux requis ouverts :
+  * Port 80 (HTTP)
+  * Port 443 (HTTPS)
+  * Port 8000 (uniquement pour le developpement direct du backend)
+
+--------------------------------------------------------------------------------
+B. CONFIGURATION DU FICHIER D'ENVIRONNEMENT (.env)
+--------------------------------------------------------------------------------
+A la racine du projet backend 'manga-ocr/', vous devez creer un fichier nomme
+'.env' qui contient les variables d'environnement indispensables au fonctionnement :
+
+```
+# -- Securite backend --
+SECRET_KEY=cle_secrete_ultra_securisee_et_aleatoire_a_generer_pour_la_production
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+# -- Model de Traduction LLM --
+GROQ_API_KEY=gsk_votre_cle_api_groq_obtenue_sur_leur_portail
+
+# -- Integrations Stripe --
+STRIPE_API_KEY=sk_test_votre_cle_secrete_stripe
+STRIPE_WEBHOOK_SECRET=whsec_votre_secret_webhook_stripe
+FRONTEND_URL=http://localhost  # URL de production de votre frontend
+```
+
+--------------------------------------------------------------------------------
+C. DEPLOIEMENT PAR DOCKER COMPOSE
+--------------------------------------------------------------------------------
+L'application est completement conteneurisee et orchestree.
+Fichiers d'infrastructure presents a la racine :
+1. 'Dockerfile' (Multi-stage build pour compiler le frontend React et le servir via Nginx).
+2. 'manga-ocr/Dockerfile' (Conteneur Python FastAPI optimise pour executer Manga-OCR en CPU).
+3. 'docker-compose.yml' (Lie le frontend, le backend, et declare les volumes).
+
+Pour demarrer l'application pour la premiere fois :
+
+  1. Cloner le depot du projet sur le serveur :
+     git clone https://github.com/HydreFunky11/Sensai.git
+     cd Sensai
+
+  2. Creer et configurer le fichier '.env' dans 'manga-ocr/.env'.
+
+  3. Lancer la compilation des conteneurs et leur demarrage en arriere-plan :
+     docker compose up --build -d
+
+  4. Verifier que les conteneurs fonctionnent correctement :
+     docker compose ps
+
+Les conteneurs lances sont :
+*   'sensai-frontend' : Serveur web Nginx exposant l'interface React sur le port 80.
+*   'sensai-backend' : API FastAPI s'executant en arriere-plan, accessible par Nginx.
+
+
+================================================================================
+4. MANUEL D'EXPLOITATION, SURVEILLANCE ET MAINTENANCE
+================================================================================
+
+Procedures a suivre par l'administrateur systeme pour surveiller l'application en
+production et assurer sa continuite de service.
+
+--------------------------------------------------------------------------------
+A. SURVEILLANCE DES LOGS OPERATIONNELS (OBSERVABILITE)
+--------------------------------------------------------------------------------
+Toutes les actions critiques (connexions suspectes, echecs d'importations, crashs 500)
+sont journalisees dans le fichier 'sensai.log' monte sur le volume Docker.
+
+Pour lire les logs en temps reel (utile pour detecter une tentative d'intrusion
+ou comprendre un plantage utilisateur) :
+  docker compose logs -f backend
+
+Ou directement dans le fichier journal situe dans le conteneur ou le volume :
+  tail -f manga-ocr/sensai.log
+
+Exemple de ligne de log de connexion reussie :
+  2026-07-18 16:07:45,123 - INFO - sensai.auth - [auth.py:50] - Connexion reussie pour l'utilisateur : admin@example.com
+
+Exemple d'alerte de securite (tentative d'intrusion) :
+  2026-07-18 16:08:12,456 - WARNING - sensai.auth - [auth.py:38] - Echec de connexion : email ou mot de passe incorrect pour pirate@example.com
+
+--------------------------------------------------------------------------------
+B. SAUVEGARDE ET RESTAURATION DE LA BASE DE DONNEES
+--------------------------------------------------------------------------------
+La base de donnees de SensAI utilise SQLite pour sa simplicite et son efficacite.
+Le fichier de base de donnees est 'sensai.db' situe dans 'manga-ocr/'.
+
+1. Procedure de sauvegarde (Backup) :
+   Il suffit de copier le fichier de base de donnees vers un espace de stockage
+   securise. Cette operation peut etre automatisee via une tache cron toutes les nuits :
+     cp manga-ocr/sensai.db /backup/sensai_backup_$(date +%F).db
+
+2. Procedure de restauration (Restore) :
+   En cas de corruption de la base :
+     # Arreter les conteneurs
+     docker compose down
+     # Remplacer la base corrompue par la sauvegarde
+     cp /backup/sensai_backup_date.db manga-ocr/sensai.db
+     # Relancer les conteneurs
+     docker compose up -d
+
+--------------------------------------------------------------------------------
+C. PROCEDURE DE MISE A JOUR (UPDATE)
+--------------------------------------------------------------------------------
+Pour mettre a jour l'application en production lors de la sortie d'une nouvelle version :
+
+  1. Recuperer les derniers commits du depot Git :
+     git pull origin main
+
+  2. Reconstruire et relancer les conteneurs a chaud (sans interruption de service majeure) :
+     docker compose up --build -d
+
+  3. Supprimer les anciens volumes et images orphelins pour liberer de l'espace disque :
+     docker image prune -f
+
+
+================================================================================
+5. GUIDE DE L'UTILISATEUR
+================================================================================
+
+Ce guide utilisateur decrit les fonctionnalites cles de SensAI et comment
+les manipuler facilement au quotidien.
+
+--------------------------------------------------------------------------------
+A. IMPORTATION ET DECOUPAGE D'UN MANUELS / MANGAS PDF
+--------------------------------------------------------------------------------
+1. Depuis la page d'accueil de la Bibliotheque, cliquez sur le bouton "Importer".
+2. Selectionnez votre fichier PDF (ex: un chapitre de manga japonais de 80 Mo).
+3. Si le fichier est volumineux, vous pouvez :
+   * Renommer le titre du manga pour le retrouver plus facilement.
+   * Choisir le dossier d'apprentissage de destination.
+   * Cocher "Extraire une plage de pages" et renseigner les pages (ex: pages 1 a 15)
+     pour n'importer que la partie voulue et economiser votre espace de stockage.
+4. Validez l'importation. La miniature apparait immediatement dans votre bibliotheque.
+
+--------------------------------------------------------------------------------
+B. LECTURE DE MANGA ET RECONNAISSANCE DE TEXTE (OCR)
+--------------------------------------------------------------------------------
+1. Cliquez sur le manga importe pour l'ouvrir dans le lecteur double-page.
+2. Utilisez les boutons de zoom ou passez en mode plein ecran pour plus de confort.
+3. Lorsque vous rencontrez une bulle de texte japonais que vous ne comprenez pas :
+   * Cliquez sur l'outil "Selection" (l'icone de recadrage).
+   * Dessinez un cadre autour de la bulle de texte japonais.
+4. L'application extrait le japonais et affiche la traduction immediate en francais,
+   la prononciation en Romaji, ainsi qu'un dictionnaire interactif mot a mot.
+5. Cliquez sur "Ajouter aux flashcards" pour sauvegarder ce mot dans vos revisions.
+
+--------------------------------------------------------------------------------
+C. METHODE DE REVISION DES FLASHCARDS PAR LE CLAVIER (ACCESSIBILITE)
+--------------------------------------------------------------------------------
+SensAI est concu pour etre pilote entierement au clavier pour accelerer vos revisions.
+
+1. Rendez-vous sur la page "Revisions" et selectionnez le dossier a etudier.
+2. La premiere fiche s'affiche a l'ecran (Recto).
+3. Evaluez mentalement votre reponse, puis :
+   * Appuyez sur la touche 'ENTREE' de votre clavier pour retourner la carte (Verso).
+4. Saisissez votre niveau de maitrise a l'aide des touches numeriques de votre clavier :
+   * Appuyez sur la touche '1' : Je ne sais plus (la carte reviendra tres vite).
+   * Appuyez sur la touche '2' : Un peu dur.
+   * Appuyez sur la touche '3' : Je sais.
+   * Appuyez sur la touche '4' : Trop facile.
+5. L'application enregistre instantanement votre note SM-2 et affiche la fiche suivante.
+6. Si c'est un test de tracé guidé : dessinez le caractere sur le canvas, puis utilisez
+   la touche 'ECHAP' si vous souhaitez recommencer votre tracé.
+================================================================================
