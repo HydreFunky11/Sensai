@@ -1,5 +1,7 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import logging
 from api.routes import router as general_router
 from api.auth import router as auth_router
 from api.cards import router as cards_router
@@ -8,6 +10,11 @@ from api.payments import router as payments_router
 from db.database import engine
 from db import models
 from core.rate_limiter import limiter_general
+from core.logging_config import setup_logging
+
+# Initialiser le système de journalisation
+setup_logging()
+logger = logging.getLogger("sensai.main")
 
 # Création des tables dans la base de données
 models.Base.metadata.create_all(bind=engine)
@@ -17,6 +24,15 @@ app = FastAPI(
     title="SensAI API",
     dependencies=[Depends(limiter_general)]
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # Enregistrer la stack trace confidentiellement dans le fichier journal
+    logger.error("Exception interne non interceptée sur %s : %s", request.url.path, str(exc), exc_info=exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Une erreur serveur interne est survenue. Veuillez contacter le support technique."}
+    )
 
 # Middleware pour forcer les en-têtes HTTP de sécurité (Top 10 OWASP)
 @app.middleware("http")

@@ -17,9 +17,10 @@ class User(Base):
     subscription_id = Column(String, nullable=True)
     subscription_end_at = Column(DateTime, nullable=True)
 
-    mangas = relationship("Manga", back_populates="owner")
-    decks = relationship("Deck", back_populates="owner")
-    learned_characters = relationship("LearnedCharacter", back_populates="owner")
+    mangas = relationship("Manga", back_populates="owner", cascade="all, delete-orphan")
+    decks = relationship("Deck", back_populates="owner", cascade="all, delete-orphan")
+    learned_characters = relationship("LearnedCharacter", back_populates="owner", cascade="all, delete-orphan")
+    folders = relationship("MangaFolder", back_populates="owner", cascade="all, delete-orphan")
 
 class MangaFolder(Base):
     __tablename__ = "manga_folders"
@@ -28,7 +29,7 @@ class MangaFolder(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     name = Column(String)
 
-    owner = relationship("User")
+    owner = relationship("User", back_populates="folders")
     mangas = relationship("Manga", back_populates="folder")
 
 class Manga(Base):
@@ -53,7 +54,7 @@ class Deck(Base):
     description = Column(String, nullable=True)
 
     owner = relationship("User", back_populates="decks")
-    cards = relationship("Flashcard", back_populates="deck")
+    cards = relationship("Flashcard", back_populates="deck", cascade="all, delete-orphan")
 
 class Flashcard(Base):
     __tablename__ = "flashcards"
@@ -68,7 +69,7 @@ class Flashcard(Base):
     image_crop_path = Column(String, nullable=True)
 
     deck = relationship("Deck", back_populates="cards")
-    review_stats = relationship("ReviewStats", back_populates="card", uselist=False)
+    review_stats = relationship("ReviewStats", back_populates="card", uselist=False, cascade="all, delete-orphan")
 
 class ReviewStats(Base):
     __tablename__ = "review_stats"
