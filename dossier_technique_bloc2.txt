@@ -914,35 +914,26 @@ graph TD
 ```
 
 --------------------------------------------------------------------------------
-6.3 DIAGRAMME DE SEQUENCE UML (DESSIN DE BULLE OCR ET TRADUCTION)
+6.3 DIAGRAMME DE FLUX SEQUENTIEL (DESSIN DE BULLE OCR ET TRADUCTION)
 --------------------------------------------------------------------------------
-```mermaid
-sequenceDiagram
-    autonumber
-    actor U as Utilisateur
-    participant F as Frontend (Reader React)
-    participant B as Backend (FastAPI)
-    participant MO as IA Local (Manga-OCR)
-    participant LLM as API Groq (LLM)
-    participant DB as Base de donnees (SQLite)
+Ce diagramme de flux sequentiel sous forme verticale decrit la chronologie des etapes
+lorsqu'un utilisateur effectue une selection de bulle manga dans le lecteur.
 
-    U->>F: Dessine un cadre de selection sur une bulle de manga
-    F->>B: POST /ocr/translate (Coordonnees box, image ID)
-    activate B
-    B->>DB: Recupere le chemin d'acces du manga
-    DB-->>B: Retourne le chemin du fichier image/PDF
-    B->>B: Decoupe la zone de l'image (Pillow/fitz)
-    B->>MO: Transmet l'image decoupée (Manga-OCR)
-    activate MO
-    MO-->>B: Retourne le texte japonais brut transcrit
-    deactivate MO
-    B->>LLM: Envoie le japonais pour traduction contextualisee
-    activate LLM
-    LLM-->>B: Retourne le JSON (Traduction, Romaji, Decoupage grammatical)
-    deactivate LLM
-    B->>DB: Stocke l'analyse dans la table de cache de traduction
-    B-->>F: Retourne la reponse JSON structuree
-    deactivate B
-    F-->>U: Affiche le panneau lateral de traduction et dictionnaire
+```mermaid
+graph TD
+    U[1. Utilisateur : Dessine le cadre de selection dans la bulle]
+    --> F1[2. Frontend : Envoie les coordonnees du cadre au Backend]
+    
+    F1 --> B1[3. Backend : Localise le fichier manga associe dans la BDD SQLite]
+    B1 --> B2[4. Backend : Extrait et decoupe la zone de l'image via Pillow/fitz]
+    
+    B2 --> MO1[5. Service Manga-OCR : Analyse et transcrit l'image en japonais brut]
+    MO1 --> B3[6. Backend : Recupere le texte japonais extrait]
+    
+    B3 --> LLM1[7. API Groq LLM : Traduit et decompose grammaticalement le texte]
+    LLM1 --> B4[8. Backend : Enregistre le resultat en cache dans SQLite]
+    
+    B4 --> F2[9. Frontend : Recoit la structure JSON de traduction]
+    F2 --> UI[10. Interface : Affiche le panneau lateral a l'utilisateur]
 ```
 ================================================================================
