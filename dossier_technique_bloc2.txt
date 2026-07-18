@@ -920,7 +920,7 @@ Ce diagramme de flux sequentiel sous forme verticale decrit la chronologie des e
 lorsqu'un utilisateur effectue une selection de bulle manga dans le lecteur.
 
 ```mermaid
-graph LR
+graph TD
     subgraph Frontend / UI
         U[1. Utilisateur : Dessine le cadre] --> F1[2. Frontend : Envoie les coordonnees]
         UI[10. Interface : Affiche la traduction] <-- F2[9. Frontend : Recoit la traduction JSON]
