@@ -546,6 +546,111 @@ et de maintenir l'application SensAI en production.
     L'interface web est desormais disponible sur le port 80 (HTTP) de votre serveur.
 
 --------------------------------------------------------------------------------
+4.1.1 Particularites d'installation sous Windows
+--------------------------------------------------------------------------------
+Pour installer et executer SensAI dans un environnement Windows (developpement local
+ou hebergement), deux methodes s'offrent a vous :
+
+METHODE A : DEPLOIEMENT PAR DOCKER (CONSEILLE POUR CORRESPONDRE A LA PRODUCTION)
+1. Installation du sous-systeme Windows pour Linux (WSL 2) :
+   - Ouvrez PowerShell en tant qu'administrateur et executez :
+     wsl --install
+   - Redemarrez votre ordinateur si demande. Cela permet a Windows d'executer un
+     vrai noyau Linux leger.
+2. Installation de Docker Desktop :
+   - Telechargez et installez "Docker Desktop pour Windows".
+   - Lors de l'installation, veillez a cocher l'option "Use the WSL 2 based engine".
+   - Lancez Docker Desktop et verifiez que l'icone de la baleine apparait dans
+     la barre des taches.
+3. Clonage et lancement :
+   - Ouvrez PowerShell ou Git Bash, naviguez vers votre dossier de travail :
+     git clone https://github.com/HydreFunky11/Sensai.git
+     cd Sensai
+   - Creez le fichier 'manga-ocr/.env' en adaptant les variables d'environnement.
+   - Demarrez l'application avec Docker Compose :
+     docker compose up --build -d
+   - L'application est accessible dans votre navigateur web sur 'http://localhost'.
+
+METHODE B : DEPLOIEMENT EN MODE DEVELOPPEMENT LOCAL (SANS DOCKER)
+1. Installation des outils de base :
+   - Telechargez et installez Python 3.12 (cochez imperativement l'option "Add Python.exe to PATH" lors de l'installation).
+   - Telechargez et installez Node.js (v22+ LTS).
+   - Installez Git pour Windows.
+2. Lancement du serveur Backend (Python) :
+   - Ouvrez une fenetre PowerShell ou CMD, naviguez dans le dossier backend :
+     cd Sensai/manga-ocr
+   - Creer un environnement virtuel isole (venv) :
+     python -m venv venv
+   - Activez l'environnement virtuel :
+     .\venv\Scripts\Activate.ps1
+   - Mettre a jour pip et installer les dependances :
+     pip install --upgrade pip
+     # Installer PyTorch pour CPU uniquement pour eviter les dependances CUDA volumineuses sous Windows
+     pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cpu
+     pip install -r requirements.txt
+   - Creer le fichier '.env' a la racine de 'manga-ocr/'.
+   - Demarrer le serveur de developpement :
+     python main.py
+   - Le backend ecoute sur 'http://127.0.0.1:8000'.
+3. Lancement de l'interface Frontend (React) :
+   - Ouvrez une seconde fenetre PowerShell et naviguez dans le dossier frontend :
+     cd Sensai/frontend
+   - Installez les paquets npm :
+     npm install
+   - Demarrez le serveur de developpement local Vite :
+     npm run dev
+   - Le frontend est accessible a l'adresse 'http://localhost:5173'.
+
+--------------------------------------------------------------------------------
+4.1.2 Particularites d'installation sous macOS
+--------------------------------------------------------------------------------
+Pour installer et executer SensAI sous macOS (processeurs Apple Silicon M1/M2/M3
+ou anciens processeurs Intel), voici la procedure :
+
+METHODE A : DEPLOIEMENT PAR DOCKER (RECOMMANDEE)
+1. Installation de Docker Desktop :
+   - Telechargez "Docker Desktop pour Mac". Choisissez la version correspondante a
+     votre puce (Apple Chip pour M1/M2/M3 ou Intel Chip pour les Mac plus anciens).
+   - Glissez l'application Docker dans votre dossier Applications et lancez-la.
+2. Clonage et lancement :
+   - Ouvrez l'application Terminal de macOS et clonez le projet :
+     git clone https://github.com/HydreFunky11/Sensai.git
+     cd Sensai
+   - Renseignez le fichier 'manga-ocr/.env'.
+   - Lancez la commande Docker Compose :
+     docker compose up --build -d
+   - Ouvrez Safari ou Chrome et connectez-vous a l'adresse 'http://localhost'.
+
+METHODE B : DEPLOIEMENT EN MODE DEVELOPPEMENT LOCAL (SANS DOCKER)
+1. Installation des outils de base :
+   - Installez Homebrew (le gestionnaire de paquets macOS) si non present. Ouvrez un terminal :
+     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   - Installez Python 3.12 et Node.js via Homebrew :
+     brew install python@3.12 node
+2. Configuration du serveur Backend :
+   - Naviguez vers le dossier backend :
+     cd Sensai/manga-ocr
+   - Creer un environnement virtuel Python :
+     python3 -m venv venv
+   - Activez l'environnement virtuel :
+     source venv/bin/activate
+   - Installer les dependances (PyTorch CPU et packages du fichier requirements) :
+     pip install --upgrade pip
+     pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cpu
+     pip install -r requirements.txt
+   - Creer le fichier '.env' avec vos cles d'API.
+   - Lancer le serveur backend FastAPI :
+     python3 main.py
+3. Configuration de l'interface Frontend :
+   - Ouvrez un autre onglet de Terminal et allez dans le frontend :
+     cd Sensai/frontend
+   - Installer les modules node :
+     npm install
+   - Demarrer le serveur de developpement :
+     npm run dev
+   - Connectez-vous sur 'http://localhost:5173'.
+
+--------------------------------------------------------------------------------
 4.2 Guide d'exploitation et d'observabilite (Journaux de Logs)
 --------------------------------------------------------------------------------
 L'observabilite est assuree par l'ecriture des evenements systemes dans le fichier
