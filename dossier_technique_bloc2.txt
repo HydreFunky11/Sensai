@@ -920,20 +920,23 @@ Ce diagramme de flux sequentiel sous forme verticale decrit la chronologie des e
 lorsqu'un utilisateur effectue une selection de bulle manga dans le lecteur.
 
 ```mermaid
-graph TD
-    U[1. Utilisateur : Dessine le cadre de selection dans la bulle]
-    --> F1[2. Frontend : Envoie les coordonnees du cadre au Backend]
-    
-    F1 --> B1[3. Backend : Localise le fichier manga associe dans la BDD SQLite]
-    B1 --> B2[4. Backend : Extrait et decoupe la zone de l'image via Pillow/fitz]
-    
-    B2 --> MO1[5. Service Manga-OCR : Analyse et transcrit l'image en japonais brut]
-    MO1 --> B3[6. Backend : Recupere le texte japonais extrait]
-    
-    B3 --> LLM1[7. API Groq LLM : Traduit et decompose grammaticalement le texte]
-    LLM1 --> B4[8. Backend : Enregistre le resultat en cache dans SQLite]
-    
-    B4 --> F2[9. Frontend : Recoit la structure JSON de traduction]
-    F2 --> UI[10. Interface : Affiche le panneau lateral a l'utilisateur]
+graph LR
+    subgraph Frontend / UI
+        U[1. Utilisateur : Dessine le cadre] --> F1[2. Frontend : Envoie les coordonnees]
+        UI[10. Interface : Affiche la traduction] <-- F2[9. Frontend : Recoit la traduction JSON]
+    end
+
+    subgraph Backend FastAPI
+        F1 --> B1[3. Backend : Localise le fichier]
+        B1 --> B2[4. Backend : Decoupe la zone]
+        B4[8. Backend : Enregistre en cache] --> F2
+    end
+
+    subgraph Services Traitement IA
+        B2 --> MO1[5. Manga-OCR : Extrait le japonais]
+        MO1 --> B3[6. Backend : Recupere le texte]
+        B3 --> LLM1[7. Groq LLM : Traduit & decompose]
+        LLM1 --> B4
+    end
 ```
 ================================================================================
