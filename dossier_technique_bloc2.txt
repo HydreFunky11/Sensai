@@ -786,17 +786,19 @@ Ces codes peuvent etre copies et colles sur le site https://mermaid.live ou
 dans un plugin Google Docs pour generer automatiquement des graphiques vectoriels.
 
 --------------------------------------------------------------------------------
-6.1 DIAGRAMME DE RELATION DE BASE DE DONNEES (MCD / MLD RELATIONNEL)
+6.1 DIAGRAMMES DE RELATIONS DE BASE DE DONNEES (MCD / MLD RELATIONNEL)
 --------------------------------------------------------------------------------
+Afin d'assurer une lisibilite maximale sous Google Docs et d'eviter le flou de redimensionnement,
+le MCD a ete decoupe en deux sous-schemas logiques et compacts :
+
+6.1.1 PARTIE A : GESTION DE LA BIBLIOTHEQUE DE MANGAS
 ```mermaid
 erDiagram
     users {
         int id PK
         string email
         string hashed_password
-        string stripe_customer_id
         boolean is_premium
-        datetime created_at
     }
     manga_folders {
         int id PK
@@ -810,6 +812,26 @@ erDiagram
         string title
         string file_path
         string cover_image
+    }
+    analysis_logs {
+        int id PK
+        int user_id FK
+        datetime created_at
+    }
+
+    users ||--o{ mangas : "importe"
+    users ||--o{ manga_folders : "organise"
+    users ||--o{ analysis_logs : "consomme"
+    manga_folders ||--o{ mangas : "contient"
+```
+
+6.1.2 PARTIE B : DOSSIERS D'ETUDE, SYSTEME SRS & LOGS D'APPRENTISSAGE
+```mermaid
+erDiagram
+    users {
+        int id PK
+        string email
+        boolean is_premium
     }
     decks {
         int id PK
@@ -846,49 +868,43 @@ erDiagram
         int user_id FK
         int flashcard_id FK
         int quality
-        datetime reviewed_at
     }
     deck_review_logs {
         int id PK
         int user_id FK
         int deck_id FK
         boolean is_free_review
-        datetime reviewed_at
-    }
-    analysis_logs {
-        int id PK
-        int user_id FK
-        datetime created_at
     }
 
-    users ||--o{ mangas : "importe"
     users ||--o{ decks : "possede"
     users ||--o{ learned_characters : "apprend"
-    users ||--o{ manga_folders : "organise"
-    manga_folders ||--o{ mangas : "contient"
-    decks ||--o{ flashcards : "contient"
-    flashcards ||--o| review_stats : "a"
     users ||--o{ review_logs : "genere"
     users ||--o{ deck_review_logs : "genere"
-    users ||--o{ analysis_logs : "consomme"
+    decks ||--o{ flashcards : "contient"
+    flashcards ||--o| review_stats : "a"
 ```
 
 --------------------------------------------------------------------------------
-6.2 SCHEMA D'ARCHITECTURE ET RESEAU (DEPLOIEMENT DOCKER COMPOSE)
+6.2 SCHEMA D'ARCHITECTURE ET RESEAU (DEPLOIEMENT DOCKER COMPOSE VERTICAL)
 --------------------------------------------------------------------------------
 ```mermaid
 graph TD
     User((Utilisateur / Navigateur)) -->|Port 80/443| Nginx[Proxy Nginx / Frontend React]
-    subgraph Infrastructure Docker Compose
-        Nginx -->|Sert le code statique| React[Client React SPA]
-        Nginx -->|Redirige les requetes /api| FastAPI[Backend FastAPI Python]
-        FastAPI -->|Stockage local des fichiers mangas| Disk[(Espace Disque Local /uploads)]
-        FastAPI -->|Requetes SQL SQLAlchemy| SQLite[(Base de donnees SQLite sensai.db)]
-        FastAPI -->|Analyse OCR locale| MangaOCR[Service IA Manga-OCR]
+    
+    subgraph Conteneurs Docker Compose
+        Nginx -->|Code statique| React[Client React SPA]
+        Nginx -->|Redirection API| FastAPI[Backend FastAPI Python]
+        
+        FastAPI -->|Requetes SQL| SQLite[(BDD SQLite sensai.db)]
+        FastAPI -->|Stockage physique| Disk[(Dossier /uploads)]
+        FastAPI -->|Appel local| MangaOCR[Service IA Manga-OCR]
     end
-    FastAPI -->|Traduction LLM contextualisee| Groq[API Groq / LLM Llama3]
-    FastAPI -->|Gestion abonnements / webhooks| Stripe[API Stripe / Passerelle de paiement]
-    React -->|Chargement SVG des tracés de lettres| KanjiVG[GitHub KanjiVG / Depots SVG]
+
+    subgraph Dependances de Services Externes
+        React -->|Traces SVG| KanjiVG[KanjiVG GitHub]
+        FastAPI -->|Traduction LLM| Groq[API Groq / Llama3]
+        FastAPI -->|Webhooks & Paiement| Stripe[API Stripe]
+    end
 ```
 
 --------------------------------------------------------------------------------
