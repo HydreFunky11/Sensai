@@ -890,21 +890,25 @@ erDiagram
 ```mermaid
 graph TD
     User((Utilisateur / Navigateur)) -->|Port 80/443| Nginx[Proxy Nginx / Frontend React]
-    
-    subgraph Conteneurs Docker Compose
-        Nginx -->|Code statique| React[Client React SPA]
-        Nginx -->|Redirection API| FastAPI[Backend FastAPI Python]
+
+    subgraph Infrastructure Docker Compose
+        Nginx -->|Sert le code statique| React[Client React SPA]
+        Nginx -->|Redirige les requetes /api| FastAPI[Backend FastAPI Python]
         
-        FastAPI -->|Requetes SQL| SQLite[(BDD SQLite sensai.db)]
-        FastAPI -->|Stockage physique| Disk[(Dossier /uploads)]
-        FastAPI -->|Appel local| MangaOCR[Service IA Manga-OCR]
+        FastAPI -->|Requetes SQL SQLAlchemy| SQLite[(Base de donnees SQLite sensai.db)]
+        FastAPI -->|Stockage local des fichiers mangas| Disk[(Espace Disque Local /uploads)]
+        FastAPI -->|Analyse OCR locale| MangaOCR[Service IA Manga-OCR]
     end
 
-    subgraph Dependances de Services Externes
-        React -->|Traces SVG| KanjiVG[KanjiVG GitHub]
-        FastAPI -->|Traduction LLM| Groq[API Groq / Llama3]
-        FastAPI -->|Webhooks & Paiement| Stripe[API Stripe]
+    subgraph Services Externes Cloud
+        KanjiVG[GitHub KanjiVG / Depots SVG]
+        Groq[API Groq / LLM Llama3]
+        Stripe[API Stripe / Passerelle de paiement]
     end
+
+    React -.->|Chargement SVG des tracés de lettres| KanjiVG
+    FastAPI -.->|Traduction LLM contextualisee| Groq
+    FastAPI -.->|Gestion abonnements / webhooks| Stripe
 ```
 
 --------------------------------------------------------------------------------
