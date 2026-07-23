@@ -779,3 +779,202 @@ algorithme SM-2 pour ancrer le vocabulaire dans votre memoire a long terme.
     - Des que le caractere est correctement trace, le Verso apparait. Saisissez votre note
       SM-2 pour passer a la suite.
 ================================================================================
+PARTIE VI : DIAGRAMMES ET SCHEMAS TECHNIQUES (CODES MERMAID)
+================================================================================
+
+Ces codes peuvent etre copies et colles sur le site https://mermaid.live ou
+dans un plugin Google Docs pour generer automatiquement des graphiques vectoriels.
+
+--------------------------------------------------------------------------------
+6.1 DIAGRAMMES DE RELATIONS DE BASE DE DONNEES (MCD / MLD RELATIONNEL)
+--------------------------------------------------------------------------------
+Afin d'assurer une lisibilite maximale sous Google Docs et d'eviter le flou de redimensionnement,
+le MCD a ete decoupe en deux sous-schemas logiques et compacts :
+
+6.1.1 PARTIE A : GESTION DE LA BIBLIOTHEQUE DE MANGAS
+```mermaid
+erDiagram
+    users {
+        int id PK
+        string email
+        string hashed_password
+        boolean is_premium
+    }
+    manga_folders {
+        int id PK
+        int user_id FK
+        string name
+    }
+    mangas {
+        int id PK
+        int user_id FK
+        int folder_id FK
+        string title
+        string file_path
+        string cover_image
+    }
+    analysis_logs {
+        int id PK
+        int user_id FK
+        datetime created_at
+    }
+
+    users ||--o{ mangas : "importe"
+    users ||--o{ manga_folders : "organise"
+    users ||--o{ analysis_logs : "consomme"
+    manga_folders ||--o{ mangas : "contient"
+```
+
+6.1.2 PARTIE B : DOSSIERS D'ETUDE, SYSTEME SRS & LOGS D'APPRENTISSAGE
+```mermaid
+erDiagram
+    users {
+        int id PK
+        string email
+        boolean is_premium
+    }
+    decks {
+        int id PK
+        int user_id FK
+        string title
+        string description
+    }
+    flashcards {
+        int id PK
+        int deck_id FK
+        string text_source
+        string translation
+        string romaji
+        json breakdown
+        string context_note
+        string image_crop_path
+    }
+    review_stats {
+        int id PK
+        int flashcard_id FK
+        datetime next_review_date
+        int interval
+        float ease_factor
+    }
+    learned_characters {
+        int id PK
+        int user_id FK
+        string character
+        string alphabet_type
+        datetime learned_at
+    }
+    review_logs {
+        int id PK
+        int user_id FK
+        int flashcard_id FK
+        int quality
+    }
+    deck_review_logs {
+        int id PK
+        int user_id FK
+        int deck_id FK
+        boolean is_free_review
+    }
+
+    users ||--o{ decks : "possede"
+    users ||--o{ learned_characters : "apprend"
+    users ||--o{ review_logs : "genere"
+    users ||--o{ deck_review_logs : "genere"
+    decks ||--o{ flashcards : "contient"
+    flashcards ||--o| review_stats : "a"
+```
+
+--------------------------------------------------------------------------------
+6.2 SCHEMA D'ARCHITECTURE ET RESEAU (DEPLOIEMENT DOCKER COMPOSE VERTICAL)
+--------------------------------------------------------------------------------
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#EEF2FF',
+    'primaryTextColor': '#312E81',
+    'primaryBorderColor': '#C7D2FE',
+    'lineColor': '#6366F1',
+    'secondaryColor': '#F9FAFB',
+    'tertiaryColor': '#F5F3FF'
+  }
+}}%%
+graph TD
+    User((Utilisateur / Navigateur)) -->|Port 80/443| Nginx[Proxy Nginx]
+
+    Nginx -->|Sert le code statique| React[Client React SPA]
+    Nginx -->|Redirige les requetes /api| FastAPI[Backend FastAPI Python]
+    
+    %% Relations fonctionnelles du Backend
+    FastAPI -->|Requetes SQL SQLAlchemy| SQLite[(Base de donnees SQLite sensai.db)]
+    FastAPI -->|Stockage local des mangas| Disk[(Espace Disque Local /uploads)]
+    FastAPI -->|Analyse OCR locale| MangaOCR[Service IA Manga-OCR]
+
+    %% Services Externes Cloud
+    React -.->|Chargement SVG des tracés de lettres| KanjiVG[GitHub KanjiVG / Depots SVG]
+    FastAPI -.->|Traduction LLM contextualisee| Groq[API Groq / LLM Llama3]
+    FastAPI -.->|Gestion abonnements / webhooks| Stripe[API Stripe / Passerelle de paiement]
+
+    %% Relations invisibles pour forcer un empilement strictement vertical (sans elargissement)
+    React ~~~ FastAPI
+    SQLite ~~~ Disk
+    Disk ~~~ MangaOCR
+    MangaOCR ~~~ KanjiVG
+    KanjiVG ~~~ Groq
+    Groq ~~~ Stripe
+```
+
+--------------------------------------------------------------------------------
+6.3 DIAGRAMME DE FLUX SEQUENTIEL (DESSIN DE BULLE OCR ET TRADUCTION)
+--------------------------------------------------------------------------------
+Ce diagramme de flux sequentiel sous forme verticale decrit la chronologie des etapes
+lorsqu'un utilisateur effectue une selection de bulle manga dans le lecteur.
+
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#EEF2FF',
+    'primaryTextColor': '#312E81',
+    'primaryBorderColor': '#C7D2FE',
+    'lineColor': '#6366F1',
+    'secondaryColor': '#F9FAFB',
+    'tertiaryColor': '#F5F3FF'
+  }
+}}%%
+flowchart TD
+    subgraph FrontendUI [Frontend / UI]
+        U[1. Utilisateur : Dessine le cadre]
+        F1[2. Frontend : Envoie les coordonnees]
+        F2[9. Frontend : Recoit la traduction JSON]
+        UI[10. Interface : Affiche la traduction]
+        
+        U --> F1
+        F2 --> UI
+    end
+
+    subgraph BackendFastAPI [Backend FastAPI]
+        B1[3. Backend : Localise le fichier]
+        B2[4. Backend : Decoupe la zone]
+        B3[6. Backend : Recupere le texte]
+        B4[8. Backend : Enregistre en cache]
+        
+        B1 --> B2
+        B3 --> B4
+    end
+
+    subgraph ServicesIA [Services Traitement IA]
+        MO1[5. Manga-OCR : Extrait le japonais]
+        LLM1[7. Groq LLM : Traduit & decompose]
+        
+        MO1 --> LLM1
+    end
+
+    %% Connexions entre subgraphs (declarees a la fin pour eviter les bugs d'affichage de boite)
+    F1 --> B1
+    B2 --> MO1
+    MO1 --> B3
+    LLM1 --> B4
+    B4 --> F2
+```
+================================================================================
