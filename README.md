@@ -21,37 +21,7 @@ SensAI résout cela en proposant :
 
 SensAI s'appuie sur une architecture découplée moderne et industrialisée :
 
-```mermaid
-graph TD
-    User((Utilisateur / Navigateur)) -->|Port 80/443| Nginx[Proxy Nginx]
 
-    subgraph Infrastructure Docker Compose
-        Nginx -->|Sert le code statique| React[Client React SPA]
-        Nginx -->|Redirige les requetes /api| FastAPI[Backend FastAPI Python]
-        
-        FastAPI -->|Requetes SQL SQLAlchemy| SQLite[(Base de donnees SQLite sensai.db)]
-        FastAPI -->|Stockage local des mangas| Disk[(Espace Disque Local /uploads)]
-        FastAPI -->|Analyse OCR locale| MangaOCR[Service IA Manga-OCR]
-    end
-
-    subgraph Services Externes Cloud
-        KanjiVG[GitHub KanjiVG / Depots SVG]
-        Groq[API Groq / LLM Llama3]
-        Stripe[API Stripe / Passerelle de paiement]
-    end
-
-    React -.->|Chargement SVG des tracés de lettres| KanjiVG
-    FastAPI -.->|Traduction LLM contextualisee| Groq
-    FastAPI -.->|Gestion abonnements / webhooks| Stripe
-
-    %% Relations invisibles pour forcer un empilement strictement vertical
-    React ~~~ FastAPI
-    SQLite ~~~ Disk
-    Disk ~~~ MangaOCR
-    MangaOCR ~~~ KanjiVG
-    KanjiVG ~~~ Groq
-    Groq ~~~ Stripe
-```
 
 ### 1. Le Frontend (React & Vite)
 Une Single Page Application (SPA) développée avec **React 19** et **Vite**, hautement responsive et optimisée.
