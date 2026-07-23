@@ -17,58 +17,6 @@ SensAI résout cela en proposant :
 
 ---
 
-## 🛠️ Pourquoi et comment ça fonctionne ? (Architecture Technique)
-
-SensAI s'appuie sur une architecture découplée moderne et industrialisée :
-
-```mermaid
-graph TD
-    User((Utilisateur / Navigateur)) -->|Port 80/443| Nginx[Proxy Nginx]
-
-    subgraph Infrastructure Docker Compose
-        Nginx -->|Sert le code statique| React[Client React SPA]
-        Nginx -->|Redirige les requetes /api| FastAPI[Backend FastAPI Python]
-        
-        FastAPI -->|Requetes SQL SQLAlchemy| SQLite[(Base de donnees SQLite sensai.db)]
-        FastAPI -->|Stockage local des mangas| Disk[(Espace Disque Local /uploads)]
-        FastAPI -->|Analyse OCR locale| MangaOCR[Service IA Manga-OCR]
-    end
-
-    subgraph Services Externes Cloud
-        KanjiVG[GitHub KanjiVG / Depots SVG]
-        Groq[API Groq / LLM Llama3]
-        Stripe[API Stripe / Passerelle de paiement]
-    end
-
-    React -.->|Chargement SVG des tracés de lettres| KanjiVG
-    FastAPI -.->|Traduction LLM contextualisee| Groq
-    FastAPI -.->|Gestion abonnements / webhooks| Stripe
-
-    %% Relations invisibles pour forcer un empilement strictement vertical
-    React ~~~ FastAPI
-    SQLite ~~~ Disk
-    Disk ~~~ MangaOCR
-    MangaOCR ~~~ KanjiVG
-    KanjiVG ~~~ Groq
-    Groq ~~~ Stripe
-```
-
-### 1. Le Frontend (React & Vite)
-Une Single Page Application (SPA) développée avec **React 19** et **Vite**, hautement responsive et optimisée.
-*   **Accessibilité (A11y)** : Conforme au RGAA/WCAG (navigation 100% au clavier, indicateurs de focus visibles violet néon, attributs sémantiques WAI-ARIA, zone d'annonces vocales `aria-live`).
-
-### 2. Le Backend (FastAPI & Python)
-Une API REST performante gérant l'orchestration des données, les traitements lourds et les interconnexions IA.
-*   **Sécurité (OWASP)** : Mots de passe chiffrés avec `bcrypt`, session par jetons d'accès **JWT**, middleware d'en-têtes HTTP de protection, Rate Limiting par IP et intercepteur global d'erreurs 500 anonymisant les réponses.
-*   **Gestion de fichiers** : Filtres binaires vérifiant la signature des fichiers (Pillow) contre les malwares déguisés, limite à 100 Mo et renommage par UUID.
-*   **Respect du RGPD** : Suppression de compte (purge complète de la base de données en cascade et destruction physique des fichiers mangas du disque) et export de profil au format standard JSON.
-
-### 3. Les Moteurs d'Intelligence Artificielle (OCR & LLM)
-*   **Manga-OCR (Local)** : Un modèle de Deep Learning basé sur des réseaux de neurones convolutionnels (CNN/Transformer), pré-entraîné spécifiquement sur le texte de manga vertical et les polices japonaises. Il s'exécute localement sur le serveur.
-*   **Llama 3 (via Groq API)** : Utilisé pour la traduction contextuelle et le découpage lexical. Groq permet d'obtenir des temps de réponse inférieurs à 1 seconde.
-
----
-
 ## 📥 Guide d'Installation
 
 ### 📋 Prérequis
