@@ -1,3 +1,5 @@
+Lien Github : https://github.com/HydreFunky11/Sensai
+
 # 🧠 SensAI - Lecteur de Mangas Intelligent & Apprentissage du Japonais (OCR / SRS)
 
 SensAI est une application web d'apprentissage du japonais conçue pour éliminer les frictions de lecture de mangas en version originale (VO). Grâce à une chaîne de traitement combinant la reconnaissance d'écriture locale et l'intelligence artificielle, l'application permet de lire des scans de mangas, de détourer les bulles de dialogue pour obtenir une traduction contextualisée instantanée, et de sauvegarder ce vocabulaire dans un système de révision espacée (SRS).
@@ -14,6 +16,29 @@ SensAI résout cela en proposant :
 *   **Une Traduction Contextuelle & Grammaticale** : Une IA traduit la phrase en français en l'adaptant au contexte de la scène, fournit la prononciation en Romaji, et décompose la phrase mot par mot avec leur rôle grammatical.
 *   **Un Système de Répétition Espacée (SRS)** : Les mots traduits peuvent être ajoutés sous forme de fiches (*flashcards*) révisables au clavier selon l'algorithme scientifique **SM-2** (SuperMemo 2).
 *   **Un Tracé de Caractères Guidé** : Pour l'apprentissage des alphabets (Hiragana/Katakana), un canvas tactile interactif valide l'ordre et la direction des traits en temps réel.
+*   **Comparaison de traduction (Démo)** : Deux fichiers PDF de mangas libres de droits sont présents à la racine du projet (une version originale japonaise et une version traduite anglaise). Ils permettent de tester directement et de comparer la fidélité de la traduction contextuelle de l'OCR.
+
+---
+
+## 🛠️ Pourquoi et comment ça fonctionne ? (Architecture Technique)
+
+SensAI s'appuie sur une architecture découplée moderne et industrialisée :
+
+
+
+### 1. Le Frontend (React & Vite)
+Une Single Page Application (SPA) développée avec **React 19** et **Vite**, hautement responsive et optimisée.
+*   **Accessibilité (A11y)** : Conforme au RGAA/WCAG (navigation 100% au clavier, indicateurs de focus visibles violet néon, attributs sémantiques WAI-ARIA, zone d'annonces vocales `aria-live`).
+
+### 2. Le Backend (FastAPI & Python)
+Une API REST performante gérant l'orchestration des données, les traitements lourds et les interconnexions IA.
+*   **Sécurité (OWASP)** : Mots de passe chiffrés avec `bcrypt`, session par jetons d'accès **JWT**, middleware d'en-têtes HTTP de protection, Rate Limiting par IP et intercepteur global d'erreurs 500 anonymisant les réponses.
+*   **Gestion de fichiers** : Filtres binaires vérifiant la signature des fichiers (Pillow) contre les malwares déguisés, limite à 100 Mo et renommage par UUID.
+*   **Respect du RGPD** : Suppression de compte (purge complète de la base de données en cascade et destruction physique des fichiers mangas du disque) et export de profil au format standard JSON.
+
+### 3. Les Moteurs d'Intelligence Artificielle (OCR & LLM)
+*   **Manga-OCR (Local)** : Un modèle de Deep Learning basé sur des réseaux de neurones convolutionnels (CNN/Transformer), pré-entraîné spécifiquement sur le texte de manga vertical et les polices japonaises. Il s'exécute localement sur le serveur.
+*   **Llama 3 (via Groq API)** : Utilisé pour la traduction contextuelle et le découpage lexical. Groq permet d'obtenir des temps de réponse inférieurs à 1 seconde.
 
 ---
 
