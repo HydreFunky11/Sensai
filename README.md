@@ -1,3 +1,5 @@
+Lien Github : https://github.com/HydreFunky11/Sensai
+
 # 🧠 SensAI - Lecteur de Mangas Intelligent & Apprentissage du Japonais (OCR / SRS)
 
 SensAI est une application web d'apprentissage du japonais conçue pour éliminer les frictions de lecture de mangas en version originale (VO). Grâce à une chaîne de traitement combinant la reconnaissance d'écriture locale et l'intelligence artificielle, l'application permet de lire des scans de mangas, de détourer les bulles de dialogue pour obtenir une traduction contextualisée instantanée, et de sauvegarder ce vocabulaire dans un système de révision espacée (SRS).
@@ -14,6 +16,7 @@ SensAI résout cela en proposant :
 *   **Une Traduction Contextuelle & Grammaticale** : Une IA traduit la phrase en français en l'adaptant au contexte de la scène, fournit la prononciation en Romaji, et décompose la phrase mot par mot avec leur rôle grammatical.
 *   **Un Système de Répétition Espacée (SRS)** : Les mots traduits peuvent être ajoutés sous forme de fiches (*flashcards*) révisables au clavier selon l'algorithme scientifique **SM-2** (SuperMemo 2).
 *   **Un Tracé de Caractères Guidé** : Pour l'apprentissage des alphabets (Hiragana/Katakana), un canvas tactile interactif valide l'ordre et la direction des traits en temps réel.
+*   **Comparaison de traduction (Démo)** : Deux fichiers PDF de mangas libres de droits sont présents à la racine du projet (une version originale japonaise et une version traduite anglaise). Ils permettent de tester directement et de comparer la fidélité de la traduction contextuelle de l'OCR.
 
 ---
 
