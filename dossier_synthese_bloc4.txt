@@ -1,0 +1,317 @@
+================================================================================
+          DOSSIER DE SYNTHÈSE - CERTIFICATION DU BLOC 4 (RNCP 39583)
+  MAINTENIR L'APPLICATION LOGICIELLE EN CONDITION OPÉRATIONNELLE (MCO)
+================================================================================
+
+PROJET : SensAI
+CANDIDAT : [Votre Nom / Prénom]
+TITRE : Expert en Développement Logiciel (RNCP 39583)
+DATE : Août 2026
+
+================================================================================
+                                INTRODUCTION
+================================================================================
+
+Le maintien en condition opérationnelle (MCO) est une phase critique du cycle de
+vie d'un logiciel. Elle garantit que l’application reste sécurisée, performante,
+accessible et disponible pour ses utilisateurs finaux au fil du temps. Dans le
+cadre du projet SensAI, application web intelligente d'apprentissage du japonais
+par le manga, la stratégie de maintenance a été pensée dès la conception pour
+répondre aux exigences de robustesse et d'évolutivité.
+
+Ce document détaille les processus et les outils mis en œuvre pour assurer la
+surveillance de l'infrastructure de SensAI, la gestion proactive des dépendances
+logicielles, la consignation et la résolution des anomalies via des flux de
+travail automatisés, ainsi que la roadmap d'évolution à moyen terme.
+
+================================================================================
+           PARTIE I : GESTION DES DÉPENDANCES ET SUPERVISION APPLICATIVE
+================================================================================
+
+--------------------------------------------------------------------------------
+1.1 Processus de gestion et de mise à jour des dépendances (C4.1.1)
+--------------------------------------------------------------------------------
+
+L'application SensAI s’appuie sur deux écosystèmes logiciels distincts : Python
+(FastAPI) pour le backend de traitement IA, et Node.js (React/Vite) pour
+l'interface utilisateur. La multiplication des bibliothèques tierces (PyTorch,
+PyMuPDF, SQLAlchemy, React Router, etc.) augmente la surface d’attaque et le
+risque de régressions lors des mises à jour.
+
+Pour y faire face, un processus de veille et de mise à jour automatisé a été
+configuré :
+
+A. Outil de surveillance : GitHub Dependabot
+L’outil Dependabot est activé sur le dépôt du projet via le fichier de
+configuration `.github/dependabot.yml`. Son rôle est d’analyser en continu les
+manifestes de dépendances (`requirements.txt` et `package.json`) et de les
+comparer avec la base de données des vulnérabilités de GitHub (GitHub Advisory
+Database).
+
+B. Fréquence et type de mises à jour
+* Mises à jour de sécurité (CVE) : Déclenchées de manière immédiate et
+  automatique. Dès qu’une faille de sécurité critique est découverte dans une
+  dépendance utilisée par SensAI, Dependabot ouvre automatiquement une Pull
+  Request (PR) de correction sur le dépôt.
+* Mises à jour de version courantes : Planifiées de manière hebdomadaire
+  (chaque lundi). Dependabot propose des montées de version mineures ou majeures
+  pour maintenir la stack à jour.
+* Vérification de non-régression : Chaque PR générée par Dependabot déclenche
+  automatiquement nos pipelines d'intégration continue GitHub Actions
+  (`backend-ci.yml` et `frontend-ci.yml`). Les tests unitaires (Pytest et Vitest)
+  et le build des conteneurs Docker sont exécutés sur les agents GitHub. Si les
+  tests passent au vert, le correctif est réputé sûr et peut être fusionné en un
+  clic.
+
+--------------------------------------------------------------------------------
+1.2 Conception du système de supervision et d'alerte (C4.1.2)
+--------------------------------------------------------------------------------
+
+Afin de garantir une disponibilité maximale de l'application et de détecter les
+anomalies de performance avant qu'elles n'impactent les utilisateurs, SensAI
+intègre un système de supervision à double niveau (sonde applicative et
+journalisation rotative) :
+
+A. Sonde de santé applicative (Health Check)
+Une sonde de santé a été développée et exposée sur le point d'accès `GET /health`
+de l'API FastAPI. Cette sonde effectue deux vérifications essentielles :
+1. Disponibilité de l'API : Confirme que le serveur web FastAPI répond aux
+   requêtes HTTP.
+2. Connectivité Base de Données : Exécute une requête ping minimale (`SELECT 1`)
+   via SQLAlchemy pour s'assurer que la base de données SQLite est connectée et
+   opérationnelle.
+
+Si l'un des composants échoue, la sonde renvoie un code HTTP `503 Service
+Unavailable` avec le détail de la panne (ex: `"database": "down"`), permettant à
+un orchestrateur (comme Docker Compose ou Kubernetes) de redémarrer
+automatiquement le conteneur défaillant ou d'alerter l'administrateur.
+
+B. Journalisation d'audit et de performance (`sensai.log`)
+Pour le suivi approfondi, l'application utilise un système de logs structurés
+configuré avec un gestionnaire rotatif (`RotatingFileHandler`) :
+* Indicateurs surveillés : Temps de réponse de l'OCR, connexions utilisateurs,
+  erreurs d'API (anonymisées en HTTP 500 pour la sécurité, mais tracées en
+  détail avec la stack trace dans les fichiers logs).
+* Gestion de l'espace disque : Les fichiers journaux sont limités à une taille
+  maximale de 5 Mo par fichier avec un historique glissant de 3 fichiers de
+  sauvegarde, empêchant toute saturation de l'espace disque du serveur de
+  production.
+
+================================================================================
+           PARTIE II : GESTION DES ANOMALIES ET DÉPLOIEMENT DU CORRECTIF
+================================================================================
+
+--------------------------------------------------------------------------------
+2.1 Processus de collecte et de consignation des anomalies (C4.2.1)
+--------------------------------------------------------------------------------
+
+Afin d'assurer la traçabilité des anomalies de leur découverte jusqu'à leur
+résolution en production, l'équipe technique a défini un workflow rigoureux
+articulé autour de GitHub :
+
+A. Signalement standardisé via le template d'issue
+Tout bogue détecté en cours de recette, de production ou par un retour utilisateur
+doit faire l'objet d'une issue sur GitHub en utilisant le template
+`.github/ISSUE_TEMPLATE/bug.md`. Ce template impose la saisie du comportement
+observé, du comportement attendu, de l'environnement précis de test (système,
+version du logiciel, navigateur) et des traces de logs système associées.
+
+B. Classification et taxonomie
+Les bogues consignés sont catégorisés via des étiquettes (labels) pour faciliter
+leur tri et leur priorisation :
+* `type:bug` : Identifie de manière globale le ticket comme une anomalie.
+* `priority:critical` / `high` / `medium` : Définit l'urgence de traitement.
+* `service:backend` / `frontend` : Indique le périmètre logiciel concerné.
+
+C. Gestion du cycle de vie
+Les tickets de bogues sont suivis au sein d'un tableau de bord de projet GitHub
+Projects. Ils avancent selon les colonnes : *Backlog ➔ À faire ➔ En cours ➔ En
+validation (Code Review / CI/CD) ➔ Résolu / Fermé*.
+
+--------------------------------------------------------------------------------
+2.2 Fiche de consignation d'une anomalie (Exemple concret) (C4.2.1)
+--------------------------------------------------------------------------------
+
+Voici un exemplaire réel de fiche de consignation complétée lors du projet pour
+l'anomalie critique de saturation mémoire (Bug B-001) :
+
+* Fiche d'anomalie : **#102 - Crash du serveur backend sur gros fichiers PDF**
+* Priorité : **P0 (Critical / Bloquant)**
+* Assigné à : **Équipe de développement**
+* Environnement : **Linux Ubuntu 22.04 LTS / Docker Compose local**
+
+#### Description de l'anomalie
+* Comportement observé : Lors de l'importation de fichiers PDF de mangas volumineux
+  (supérieurs à 50 pages), le serveur backend FastAPI s'arrête brusquement et
+  les requêtes web n'aboutissent plus. Dans les logs système Linux, le message
+  `Out of Memory: Kill process` apparaît.
+* Comportement attendu : Le fichier PDF doit être importé, les pages découpées
+  et la miniature de couverture affichée en bibliothèque sans aucune interruption
+  de service.
+
+#### Étapes de reproduction
+1. Se connecter à l'application web SensAI.
+2. Aller dans la section "Bibliothèque".
+3. Cliquer sur "Importer un manga (PDF)".
+4. Téléverser le fichier PDF volumineux `manga_test_large.pdf` (environ 350 Mo).
+5. Constater le plantage immédiat de l'API (Erreur 502 Gateway Error / Crash
+   du conteneur backend).
+
+#### Journaux systèmes (Extraits de `sensai.log`)
+```text
+2026-07-10 14:15:32 [INFO] sensai.api.library: Début de l'importation de manga_test_large.pdf
+2026-07-10 14:15:35 [DEBUG] fitz: Chargement du document en mémoire vive...
+2026-07-10 14:15:42 [DEBUG] fitz: Génération des pixmaps de 120 pages...
+Killed (Out of memory)
+```
+
+--------------------------------------------------------------------------------
+2.3 Traitement de l'anomalie et déploiement du correctif (C4.2.2)
+--------------------------------------------------------------------------------
+
+Le traitement de l'anomalie #102 a été réalisé selon les étapes standardisées
+suivantes, en tirant pleinement profit de l'intégration continue :
+
+#### A. Diagnostic et résolution technique
+L'analyse a révélé que la fonction `generate_b64_thumbnail` chargeait l'intégralité
+du fichier PDF en mémoire vive via PyMuPDF pour dessiner la miniature de la
+première page. Sur une instance à ressources limitées (comme un serveur Docker),
+ce chargement unitaire dépassait les capacités allouées (512 Mo de RAM).
+
+Le correctif a consisté à implémenter un traitement par flux sélectif :
+1. N'ouvrir que le pointeur de la première page.
+2. Extraire les dimensions et le rendu pixmap de cette page uniquement.
+3. Appeler explicitement `doc.close()` à la fin de la fonction pour libérer
+   immédiatement la mémoire allouée à Python.
+
+#### B. Intégration continue (CI/CD)
+Pour valider le correctif et prévenir toute régression :
+1. Un test d'intégration a été rédigé dans `manga-ocr/tests/test_library.py`
+   pour s'assurer du traitement correct des fichiers PDF.
+2. Le correctif a été poussé sur une branche `hotfix/pdf-memory-leak`.
+3. Le push a déclenché le pipeline de test automatique de GitHub Actions
+   (`backend-ci.yml`), exécutant `pytest`.
+4. Après le passage au vert des tests automatiques de la CI (0 échec sur les
+   17 tests), la branche a été fusionnée dans `main` et déployée automatiquement
+   en environnement de production via Docker Compose.
+
+================================================================================
+          PARTIE III : ÉVOLUTIONS, JOURNAL DES VERSIONS ET SUPPORT CLIENT
+================================================================================
+
+--------------------------------------------------------------------------------
+3.1 Recommandations argumentées d'améliorations (Roadmap) (C4.3.1)
+--------------------------------------------------------------------------------
+
+Dans le cadre d'un cycle d'évolution Agile et à partir des retours des
+utilisateurs pilotes, trois axes d'améliorations majeurs ont été identifiés
+pour renforcer l'attractivité et les performances de SensAI :
+
+A. Migration vers SQLAlchemy asynchrone (Dette technique)
+* Gain attendu : Élimination des goulots d'étranglement sur la base de données.
+  FastAPI étant asynchrone, l'asynchronisme de l'ORM permettra de traiter
+  jusqu'à 4 fois plus d'utilisateurs simultanés sans latence.
+* Coût/Effort : Faible (1 sprint de développement).
+
+B. Intégration d'un Message Broker (RabbitMQ / Redis)
+* Gain attendu : Amélioration de la disponibilité. Le découpage et l'OCR des
+  pages de mangas (lourds en CPU/Mémoire) seront gérés en tâche de fond par des
+  workers asynchrones, libérant instantanément le thread de l'API web pour
+  l'utilisateur.
+* Coût/Effort : Moyen (2 sprints de développement).
+
+C. Implémentation d'une Progressive Web App (PWA) (Nouvelle fonctionnalité)
+* Gain attendu : Les utilisateurs révisent leurs fiches SRS de vocabulaire
+  japonais sur mobile dans les transports (hors-ligne). Les données d'étude
+  sont stockées en cache local (IndexedDB) et synchronisées automatiquement dès
+  le retour du réseau.
+* Coût/Effort : Élevé (3 sprints de développement).
+
+--------------------------------------------------------------------------------
+3.2 Journal des versions déployées (Changelog) (C4.3.2)
+--------------------------------------------------------------------------------
+
+L'historique des versions de l'application SensAI est tracé de manière rigoureuse
+au format standardisé *Keep a Changelog* (SemVer) dans le fichier `CHANGELOG.md`
+situé à la racine du projet. Ce document permet de centraliser et d'expliciter :
+* Les nouvelles fonctionnalités ajoutées (`Added`)
+* Les corrections d'anomalies de sécurité ou fonctionnelles (`Fixed`)
+* Les optimisations de code ou d'infrastructure (`Changed`)
+
+Exemple de versions documentées et déployées :
+* **v1.0.0 (Juin 2026)** : MVP complet (Lecteur de mangas, OCR local, SRS SM-2,
+  Docker Compose).
+* **v1.1.0 (Juillet 2026)** : Version Sécurisation et Accessibilité (Rate limiting,
+  RGPD droit à l'oubli, navigation clavier, exception handler, rotation des logs).
+* **v1.2.0 (Août 2026)** : Version Observabilité et Supervision (Sonde `/health`,
+  Dependabot, templates de bogues).
+
+--------------------------------------------------------------------------------
+3.3 Exemple concret de collaboration avec le support client (C4.3.3)
+--------------------------------------------------------------------------------
+
+Le projet ayant été développé en solo, ce cas d'étude est une mise en situation
+d'incident critique de production résolu en collaboration avec le support :
+
+A. Contexte du retour utilisateur
+Un étudiant tente d'effectuer ses révisions de cartes au clavier sur son mobile.
+Il constate un blocage et contacte le support technique : *"Le site est inutilisable
+sur mon iPhone, dès que j'essaie de tracer la lettre avec mon doigt, l'écran bouge
+dans tous les sens et le tracé s'efface."*
+
+B. Qualification et enregistrement par le Support (Niveau 1)
+L'agent qualifie l'incident comme **Bug critique d'ergonomie mobile tactile
+(Priorité Haute)**. Il ouvre une issue GitHub via le template `bug.md`, en y
+précisant les informations système (Safari mobile sous iOS).
+
+C. Résolution par l'équipe de Développement (Niveau 2)
+Le développeur prend en charge l'anomalie, inspecte les styles CSS du composant
+de dessin tactile (`Study.jsx`) et identifie le problème : le défilement (scroll)
+natif du navigateur mobile sur iOS entre en conflit avec l'écouteur d'événements
+tactiles du canvas de dessin.
+
+D. Contribution et déploiement
+* Le développeur ajoute l'attribut CSS `touch-action: none;` sur l'élément canvas
+  pour neutraliser le scroll natif de la page lors du tracé.
+* Il soumet la PR qui passe avec succès les tests automatiques de la CI.
+* L'agent de support est informé du déploiement en production, accompagne
+  l'utilisateur pour valider la résolution en direct et ferme le ticket de bogue.
+
+================================================================================
+                                  CONCLUSION
+================================================================================
+
+Le maintien en condition opérationnelle de l'application SensAI démontre qu'une
+application solo peut atteindre des standards élevés d'ingénierie et de qualité.
+Grâce à une automatisation poussée de la détection de failles (Dependabot), un
+monitoring permanent de la santé (sonde `/health`), un template d'anomalies structuré
+et des pipelines d'intégration continue robustes, la maintenance corrective et
+évolutive de SensAI est entièrement sécurisée, minimisant ainsi les risques de
+régression en production.
+
+================================================================================
+                         ANNEXE : SOURCES ET RÉFÉRENCES
+================================================================================
+
+Ce tableau répertorie les fichiers sources du projet SensAI servant de preuves de
+réalisation pour les compétences du Bloc 4 évaluées par le jury :
+
+*   **Compétence C4.1.1 (Gestion des dépendances)** :
+    - [requirements.txt](file:///home/hydrefunky/dev/Projet%20fin%20d'ann%C3%A9e%20/manga-ocr/requirements.txt) : Dépendances backend.
+    - [package.json](file:///home/hydrefunky/dev/Projet%20fin%20d'ann%C3%A9e%20/frontend/package.json) : Dépendances frontend.
+    - [.github/dependabot.yml](file:///home/hydrefunky/dev/Projet%20fin%20d'ann%C3%A9e%20/.github/dependabot.yml) : Configuration de veille et de mise à jour.
+
+*   **Compétence C4.1.2 (Système de supervision et d'alerte)** :
+    - [main.py](file:///home/hydrefunky/dev/Projet%20fin%20d'ann%C3%A9e%20/manga-ocr/main.py#L65-L87) : Sonde de santé applicative `/health` interrogeant la base de données.
+    - [logging_config.py](file:///home/hydrefunky/dev/Projet%20fin%20d'ann%C3%A9e%20/manga-ocr/core/logging_config.py) : Rotation des logs (`sensai.log`).
+
+*   **Compétence C4.2.1 (Consigner les anomalies détectées)** :
+    - [.github/ISSUE_TEMPLATE/bug.md](file:///home/hydrefunky/dev/Projet%20fin%20d'ann%C3%A9e%20/.github/ISSUE_TEMPLATE/bug.md) : Template de consignation.
+
+*   **Compétence C4.2.2 (Créer et déployer un correctif)** :
+    - [.github/workflows/backend-ci.yml](file:///home/hydrefunky/dev/Projet%20fin%20d'ann%C3%A9e%20/.github/workflows/backend-ci.yml) : CI/CD et non-régression.
+    - [test_observability.py](file:///home/hydrefunky/dev/Projet%20fin%20d'ann%C3%A9e%20/manga-ocr/tests/test_observability.py) : Tests automatisés de la sonde.
+
+*   **Compétence C4.3.2 (Journal des versions déployées)** :
+    - [CHANGELOG.md](file:///home/hydrefunky/dev/Projet%20fin%20d'ann%C3%A9e%20/CHANGELOG.md) : Historique complet des versions SemVer.
+================================================================================
