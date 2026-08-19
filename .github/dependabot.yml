@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Surveillance des dépendances Javascript (npm) du frontend
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # Surveillance des dépendances Python (pip) du backend
+  - package-ecosystem: "pip"
+    directory: "/manga-ocr"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # Surveillance des mises à jour des Actions GitHub de CI/CD
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3

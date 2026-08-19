@@ -65,6 +65,28 @@ app.include_router(cards_router)
 app.include_router(library_router)
 app.include_router(payments_router)
 
+from db.database import SessionLocal
+from sqlalchemy import text
+
+@app.get("/health")
+def health_check():
+    health_status = {"status": "healthy", "services": {"database": "unknown"}}
+    try:
+        db = SessionLocal()
+        # Test minimal d'accès à la base de données
+        db.execute(text("SELECT 1"))
+        health_status["services"]["database"] = "up"
+        db.close()
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["services"]["database"] = "down"
+        logger.error("Health check failed: database connection error: %s", str(e))
+    
+    if health_status["status"] == "unhealthy":
+        return JSONResponse(status_code=503, content=health_status)
+    return health_status
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+
