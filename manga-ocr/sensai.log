@@ -1,0 +1,452 @@
+2026-07-18 16:07:27,015 - INFO - root - [logging_config.py:39] - Système de journalisation SensAI activé. Fichier cible : /home/hydrefunky/dev/Projet fin d'année /manga-ocr/sensai.log
+2026-07-18 16:07:27,449 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : test@example.com
+2026-07-18 16:07:27,460 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:27,462 - WARNING - sensai.auth - [auth.py:29] - Échec d'inscription : l'email test@example.com est déjà enregistré
+2026-07-18 16:07:27,462 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 400 Bad Request"
+2026-07-18 16:07:27,679 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : login@example.com
+2026-07-18 16:07:27,681 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:27,880 - INFO - sensai.auth - [auth.py:53] - Connexion réussie pour l'utilisateur : login@example.com
+2026-07-18 16:07:27,882 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-07-18 16:07:28,080 - WARNING - sensai.auth - [auth.py:46] - Échec de connexion : email ou mot de passe incorrect pour login@example.com
+2026-07-18 16:07:28,081 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 401 Unauthorized"
+2026-07-18 16:07:28,110 - WARNING - sensai.auth - [auth.py:46] - Échec de connexion : email ou mot de passe incorrect pour nonexistent@example.com
+2026-07-18 16:07:28,112 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 401 Unauthorized"
+2026-07-18 16:07:28,335 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : profile@example.com
+2026-07-18 16:07:28,336 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:28,338 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 200 OK"
+2026-07-18 16:07:28,339 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 401 Unauthorized"
+2026-07-18 16:07:28,547 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : update@example.com
+2026-07-18 16:07:28,549 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:28,554 - INFO - httpx - [_client.py:1025] - HTTP Request: PUT http://testserver/auth/me "HTTP/1.1 200 OK"
+2026-07-18 16:07:28,753 - INFO - sensai.auth - [auth.py:53] - Connexion réussie pour l'utilisateur : newemail@example.com
+2026-07-18 16:07:28,754 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-07-18 16:07:28,953 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : taken@example.com
+2026-07-18 16:07:28,954 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:28,958 - INFO - httpx - [_client.py:1025] - HTTP Request: PUT http://testserver/auth/me "HTTP/1.1 400 Bad Request"
+2026-07-18 16:07:29,168 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : delete_me@example.com
+2026-07-18 16:07:29,170 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,173 - INFO - sensai.auth - [auth.py:107] - Demande de suppression définitive du compte reçue pour : delete_me@example.com
+2026-07-18 16:07:29,178 - INFO - sensai.auth - [auth.py:128] - Compte delete_me@example.com et 0 fichiers mangas associés supprimés définitivement de la base de données et du disque.
+2026-07-18 16:07:29,179 - INFO - httpx - [_client.py:1025] - HTTP Request: DELETE http://testserver/auth/me "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,182 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 401 Unauthorized"
+2026-07-18 16:07:29,399 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : export_me@example.com
+2026-07-18 16:07:29,400 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,403 - INFO - sensai.auth - [auth.py:135] - Exportation des données personnelles initiée pour : export_me@example.com (RGPD Droit à la portabilité)
+2026-07-18 16:07:29,404 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me/export "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,618 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : deck@example.com
+2026-07-18 16:07:29,620 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,625 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,631 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,635 - INFO - httpx - [_client.py:1025] - HTTP Request: PUT http://testserver/cards/decks/2 "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,639 - INFO - httpx - [_client.py:1025] - HTTP Request: DELETE http://testserver/cards/decks/2 "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,641 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,860 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : cards@example.com
+2026-07-18 16:07:29,862 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,872 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/ "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,879 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/1/review "HTTP/1.1 200 OK"
+2026-07-18 16:07:29,883 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/1/review "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,094 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : learned@example.com
+2026-07-18 16:07:30,096 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,100 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,105 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,108 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,112 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,115 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,325 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : stats@example.com
+2026-07-18 16:07:30,326 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,330 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,334 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,339 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/stats "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,550 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : import_img@example.com
+2026-07-18 16:07:30,551 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,554 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_img@example.com : Nom d'origine = test_manga.png, Plage de pages = None-None
+2026-07-18 16:07:30,556 - INFO - sensai.library - [library.py:205] - Importation complétée avec succès pour import_img@example.com. Manga ID = 1, Titre enregistré = 'Mon Super Manga Renommé', Fichier stocké = uploads/library/588377c326dd4124b9bd92677235cdaf.png
+2026-07-18 16:07:30,557 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,769 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : import_pdf@example.com
+2026-07-18 16:07:30,770 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:30,790 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_pdf@example.com : Nom d'origine = manga_volume.pdf, Plage de pages = 2-4
+2026-07-18 16:07:30,793 - INFO - sensai.library - [library.py:166] - Découpage PDF réussi pour import_pdf@example.com : extrait pages 2 à 4
+2026-07-18 16:07:30,803 - INFO - sensai.library - [library.py:205] - Importation complétée avec succès pour import_pdf@example.com. Manga ID = 1, Titre enregistré = 'Chapitre Extrait', Fichier stocké = uploads/library/a8d76ee171ea45c8b33a5cd0f350e341.pdf
+2026-07-18 16:07:30,804 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 200 OK"
+2026-07-18 16:07:31,013 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : import_fail@example.com
+2026-07-18 16:07:31,015 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:31,020 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_fail@example.com : Nom d'origine = manga.pdf, Plage de pages = 2-1
+2026-07-18 16:07:31,021 - WARNING - sensai.library - [library.py:153] - Échec découpe PDF pour import_fail@example.com : plage demandée 2-1 invalide (total de pages: 3)
+2026-07-18 16:07:31,021 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-18 16:07:31,024 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_fail@example.com : Nom d'origine = manga.pdf, Plage de pages = 1-10
+2026-07-18 16:07:31,024 - WARNING - sensai.library - [library.py:153] - Échec découpe PDF pour import_fail@example.com : plage demandée 1-10 invalide (total de pages: 3)
+2026-07-18 16:07:31,025 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-18 16:07:31,235 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : security_import@example.com
+2026-07-18 16:07:31,236 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:07:31,239 - INFO - sensai.library - [library.py:133] - Début importation manga pour security_import@example.com : Nom d'origine = hack.pdf, Plage de pages = None-None
+2026-07-18 16:07:31,243 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-18 16:07:31,246 - INFO - sensai.library - [library.py:133] - Début importation manga pour security_import@example.com : Nom d'origine = script.sh, Plage de pages = None-None
+2026-07-18 16:07:31,247 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-18 16:07:31,258 - ERROR - sensai.main - [main.py:31] - Exception interne non interceptée sur /trigger-dummy-500-error : Problème de test critique provoqué !
+Traceback (most recent call last):
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/main.py", line 40, in add_security_headers
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 115, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 101, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 355, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 245, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/tests/test_observability.py", line 21, in trigger_error
+    raise RuntimeError("Problème de test critique provoqué !")
+RuntimeError: Problème de test critique provoqué !
+2026-07-18 16:08:02,179 - INFO - root - [logging_config.py:39] - Système de journalisation SensAI activé. Fichier cible : /home/hydrefunky/dev/Projet fin d'année /manga-ocr/sensai.log
+2026-07-18 16:08:02,584 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : test@example.com
+2026-07-18 16:08:02,588 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:02,590 - WARNING - sensai.auth - [auth.py:29] - Échec d'inscription : l'email test@example.com est déjà enregistré
+2026-07-18 16:08:02,591 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 400 Bad Request"
+2026-07-18 16:08:02,803 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : login@example.com
+2026-07-18 16:08:02,804 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:03,003 - INFO - sensai.auth - [auth.py:53] - Connexion réussie pour l'utilisateur : login@example.com
+2026-07-18 16:08:03,004 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-07-18 16:08:03,203 - WARNING - sensai.auth - [auth.py:46] - Échec de connexion : email ou mot de passe incorrect pour login@example.com
+2026-07-18 16:08:03,204 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 401 Unauthorized"
+2026-07-18 16:08:03,206 - WARNING - sensai.auth - [auth.py:46] - Échec de connexion : email ou mot de passe incorrect pour nonexistent@example.com
+2026-07-18 16:08:03,206 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 401 Unauthorized"
+2026-07-18 16:08:03,417 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : profile@example.com
+2026-07-18 16:08:03,418 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:03,421 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 200 OK"
+2026-07-18 16:08:03,422 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 401 Unauthorized"
+2026-07-18 16:08:03,631 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : update@example.com
+2026-07-18 16:08:03,633 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:03,638 - INFO - httpx - [_client.py:1025] - HTTP Request: PUT http://testserver/auth/me "HTTP/1.1 200 OK"
+2026-07-18 16:08:03,837 - INFO - sensai.auth - [auth.py:53] - Connexion réussie pour l'utilisateur : newemail@example.com
+2026-07-18 16:08:03,838 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,041 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : taken@example.com
+2026-07-18 16:08:04,043 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,046 - INFO - httpx - [_client.py:1025] - HTTP Request: PUT http://testserver/auth/me "HTTP/1.1 400 Bad Request"
+2026-07-18 16:08:04,258 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : delete_me@example.com
+2026-07-18 16:08:04,260 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,262 - INFO - sensai.auth - [auth.py:107] - Demande de suppression définitive du compte reçue pour : delete_me@example.com
+2026-07-18 16:08:04,268 - INFO - sensai.auth - [auth.py:128] - Compte delete_me@example.com et 0 fichiers mangas associés supprimés définitivement de la base de données et du disque.
+2026-07-18 16:08:04,269 - INFO - httpx - [_client.py:1025] - HTTP Request: DELETE http://testserver/auth/me "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,271 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 401 Unauthorized"
+2026-07-18 16:08:04,482 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : export_me@example.com
+2026-07-18 16:08:04,483 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,486 - INFO - sensai.auth - [auth.py:135] - Exportation des données personnelles initiée pour : export_me@example.com (RGPD Droit à la portabilité)
+2026-07-18 16:08:04,487 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me/export "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,699 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : deck@example.com
+2026-07-18 16:08:04,700 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,705 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,711 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,716 - INFO - httpx - [_client.py:1025] - HTTP Request: PUT http://testserver/cards/decks/2 "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,721 - INFO - httpx - [_client.py:1025] - HTTP Request: DELETE http://testserver/cards/decks/2 "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,724 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,937 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : cards@example.com
+2026-07-18 16:08:04,939 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,949 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/ "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,956 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/1/review "HTTP/1.1 200 OK"
+2026-07-18 16:08:04,960 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/1/review "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,174 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : learned@example.com
+2026-07-18 16:08:05,175 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,179 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,184 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,187 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,191 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,194 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,406 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : stats@example.com
+2026-07-18 16:08:05,407 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,411 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,415 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,421 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/stats "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,638 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : import_img@example.com
+2026-07-18 16:08:05,639 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,643 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_img@example.com : Nom d'origine = test_manga.png, Plage de pages = None-None
+2026-07-18 16:08:05,645 - INFO - sensai.library - [library.py:205] - Importation complétée avec succès pour import_img@example.com. Manga ID = 1, Titre enregistré = 'Mon Super Manga Renommé', Fichier stocké = uploads/library/4814f58c1019418691aa1e736e0abc6f.png
+2026-07-18 16:08:05,646 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,863 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : import_pdf@example.com
+2026-07-18 16:08:05,865 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:05,873 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_pdf@example.com : Nom d'origine = manga_volume.pdf, Plage de pages = 2-4
+2026-07-18 16:08:05,874 - INFO - sensai.library - [library.py:166] - Découpage PDF réussi pour import_pdf@example.com : extrait pages 2 à 4
+2026-07-18 16:08:05,879 - INFO - sensai.library - [library.py:205] - Importation complétée avec succès pour import_pdf@example.com. Manga ID = 1, Titre enregistré = 'Chapitre Extrait', Fichier stocké = uploads/library/704317f396814af3842c0a0a62058681.pdf
+2026-07-18 16:08:05,879 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 200 OK"
+2026-07-18 16:08:06,095 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : import_fail@example.com
+2026-07-18 16:08:06,096 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:06,102 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_fail@example.com : Nom d'origine = manga.pdf, Plage de pages = 2-1
+2026-07-18 16:08:06,102 - WARNING - sensai.library - [library.py:153] - Échec découpe PDF pour import_fail@example.com : plage demandée 2-1 invalide (total de pages: 3)
+2026-07-18 16:08:06,103 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-18 16:08:06,105 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_fail@example.com : Nom d'origine = manga.pdf, Plage de pages = 1-10
+2026-07-18 16:08:06,106 - WARNING - sensai.library - [library.py:153] - Échec découpe PDF pour import_fail@example.com : plage demandée 1-10 invalide (total de pages: 3)
+2026-07-18 16:08:06,106 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-18 16:08:06,326 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : security_import@example.com
+2026-07-18 16:08:06,327 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-18 16:08:06,330 - INFO - sensai.library - [library.py:133] - Début importation manga pour security_import@example.com : Nom d'origine = hack.pdf, Plage de pages = None-None
+2026-07-18 16:08:06,331 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-18 16:08:06,334 - INFO - sensai.library - [library.py:133] - Début importation manga pour security_import@example.com : Nom d'origine = script.sh, Plage de pages = None-None
+2026-07-18 16:08:06,334 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-18 16:08:06,352 - ERROR - sensai.main - [main.py:31] - Exception interne non interceptée sur /trigger-dummy-500-error : Problème de test critique provoqué !
+Traceback (most recent call last):
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/main.py", line 40, in add_security_headers
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 115, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 101, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 355, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 245, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/tests/test_observability.py", line 23, in trigger_error
+    raise RuntimeError("Problème de test critique provoqué !")
+RuntimeError: Problème de test critique provoqué !
+2026-07-18 16:08:06,356 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/trigger-dummy-500-error "HTTP/1.1 500 Internal Server Error"
+2026-07-23 21:04:25,550 - INFO - root - [logging_config.py:39] - Système de journalisation SensAI activé. Fichier cible : /home/hydrefunky/dev/Projet fin d'année /manga-ocr/sensai.log
+2026-07-23 21:04:25,861 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : test@example.com
+2026-07-23 21:04:25,871 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:25,874 - WARNING - sensai.auth - [auth.py:29] - Échec d'inscription : l'email test@example.com est déjà enregistré
+2026-07-23 21:04:25,875 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 400 Bad Request"
+2026-07-23 21:04:26,214 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : login@example.com
+2026-07-23 21:04:26,215 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:26,414 - INFO - sensai.auth - [auth.py:53] - Connexion réussie pour l'utilisateur : login@example.com
+2026-07-23 21:04:26,415 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-07-23 21:04:26,613 - WARNING - sensai.auth - [auth.py:46] - Échec de connexion : email ou mot de passe incorrect pour login@example.com
+2026-07-23 21:04:26,614 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 401 Unauthorized"
+2026-07-23 21:04:26,616 - WARNING - sensai.auth - [auth.py:46] - Échec de connexion : email ou mot de passe incorrect pour nonexistent@example.com
+2026-07-23 21:04:26,616 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 401 Unauthorized"
+2026-07-23 21:04:26,832 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : profile@example.com
+2026-07-23 21:04:26,833 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:26,836 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 200 OK"
+2026-07-23 21:04:26,838 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 401 Unauthorized"
+2026-07-23 21:04:27,047 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : update@example.com
+2026-07-23 21:04:27,048 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:27,053 - INFO - httpx - [_client.py:1025] - HTTP Request: PUT http://testserver/auth/me "HTTP/1.1 200 OK"
+2026-07-23 21:04:27,252 - INFO - sensai.auth - [auth.py:53] - Connexion réussie pour l'utilisateur : newemail@example.com
+2026-07-23 21:04:27,253 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-07-23 21:04:27,453 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : taken@example.com
+2026-07-23 21:04:27,454 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:27,457 - INFO - httpx - [_client.py:1025] - HTTP Request: PUT http://testserver/auth/me "HTTP/1.1 400 Bad Request"
+2026-07-23 21:04:27,676 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : delete_me@example.com
+2026-07-23 21:04:27,677 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:27,679 - INFO - sensai.auth - [auth.py:107] - Demande de suppression définitive du compte reçue pour : delete_me@example.com
+2026-07-23 21:04:27,685 - INFO - sensai.auth - [auth.py:128] - Compte delete_me@example.com et 0 fichiers mangas associés supprimés définitivement de la base de données et du disque.
+2026-07-23 21:04:27,686 - INFO - httpx - [_client.py:1025] - HTTP Request: DELETE http://testserver/auth/me "HTTP/1.1 200 OK"
+2026-07-23 21:04:27,688 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 401 Unauthorized"
+2026-07-23 21:04:27,900 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : export_me@example.com
+2026-07-23 21:04:27,901 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:27,904 - INFO - sensai.auth - [auth.py:135] - Exportation des données personnelles initiée pour : export_me@example.com (RGPD Droit à la portabilité)
+2026-07-23 21:04:27,905 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/auth/me/export "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,121 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : deck@example.com
+2026-07-23 21:04:28,123 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,132 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,139 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,145 - INFO - httpx - [_client.py:1025] - HTTP Request: PUT http://testserver/cards/decks/2 "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,154 - INFO - httpx - [_client.py:1025] - HTTP Request: DELETE http://testserver/cards/decks/2 "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,158 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,372 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : cards@example.com
+2026-07-23 21:04:28,373 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,383 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/ "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,391 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/1/review "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,396 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/1/review "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,616 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : learned@example.com
+2026-07-23 21:04:28,617 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,620 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,625 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,627 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,630 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,632 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,842 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : stats@example.com
+2026-07-23 21:04:28,844 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,847 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,850 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-07-23 21:04:28,855 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/stats "HTTP/1.1 200 OK"
+2026-07-23 21:04:29,072 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : import_img@example.com
+2026-07-23 21:04:29,074 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:29,078 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_img@example.com : Nom d'origine = test_manga.png, Plage de pages = None-None
+2026-07-23 21:04:29,080 - INFO - sensai.library - [library.py:205] - Importation complétée avec succès pour import_img@example.com. Manga ID = 1, Titre enregistré = 'Mon Super Manga Renommé', Fichier stocké = uploads/library/ecb43bcbabe04a94b6d117549a4a2fa1.png
+2026-07-23 21:04:29,081 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 200 OK"
+2026-07-23 21:04:29,295 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : import_pdf@example.com
+2026-07-23 21:04:29,296 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:29,314 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_pdf@example.com : Nom d'origine = manga_volume.pdf, Plage de pages = 2-4
+2026-07-23 21:04:29,317 - INFO - sensai.library - [library.py:166] - Découpage PDF réussi pour import_pdf@example.com : extrait pages 2 à 4
+2026-07-23 21:04:29,324 - INFO - sensai.library - [library.py:205] - Importation complétée avec succès pour import_pdf@example.com. Manga ID = 1, Titre enregistré = 'Chapitre Extrait', Fichier stocké = uploads/library/9d0e5f75c2194fb6b7a70dd0d78fed14.pdf
+2026-07-23 21:04:29,325 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 200 OK"
+2026-07-23 21:04:29,546 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : import_fail@example.com
+2026-07-23 21:04:29,547 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:29,552 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_fail@example.com : Nom d'origine = manga.pdf, Plage de pages = 2-1
+2026-07-23 21:04:29,553 - WARNING - sensai.library - [library.py:153] - Échec découpe PDF pour import_fail@example.com : plage demandée 2-1 invalide (total de pages: 3)
+2026-07-23 21:04:29,553 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-23 21:04:29,556 - INFO - sensai.library - [library.py:133] - Début importation manga pour import_fail@example.com : Nom d'origine = manga.pdf, Plage de pages = 1-10
+2026-07-23 21:04:29,556 - WARNING - sensai.library - [library.py:153] - Échec découpe PDF pour import_fail@example.com : plage demandée 1-10 invalide (total de pages: 3)
+2026-07-23 21:04:29,557 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-23 21:04:29,770 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : security_import@example.com
+2026-07-23 21:04:29,771 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-07-23 21:04:29,774 - INFO - sensai.library - [library.py:133] - Début importation manga pour security_import@example.com : Nom d'origine = hack.pdf, Plage de pages = None-None
+2026-07-23 21:04:29,778 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-23 21:04:29,781 - INFO - sensai.library - [library.py:133] - Début importation manga pour security_import@example.com : Nom d'origine = script.sh, Plage de pages = None-None
+2026-07-23 21:04:29,781 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/library/import "HTTP/1.1 400 Bad Request"
+2026-07-23 21:04:29,794 - ERROR - sensai.main - [main.py:31] - Exception interne non interceptée sur /trigger-dummy-500-error : Problème de test critique provoqué !
+Traceback (most recent call last):
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/main.py", line 40, in add_security_headers
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 115, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 101, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 355, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/fastapi/routing.py", line 245, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hydrefunky/dev/Projet fin d'année /manga-ocr/tests/test_observability.py", line 23, in trigger_error
+    raise RuntimeError("Problème de test critique provoqué !")
+RuntimeError: Problème de test critique provoqué !
+2026-07-23 21:04:29,801 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/trigger-dummy-500-error "HTTP/1.1 500 Internal Server Error"
