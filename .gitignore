@@ -37,6 +37,10 @@ pfd
 test_apps_script.js
 rapport d'activiter experience pro/
 Bloc 3/
-bloc 3/
 dossier_synthese_bloc4.txt
+
+# Logs
+*.log
+manga-ocr/*.log
+
 
