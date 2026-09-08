@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getMe, updateProfile, createCheckoutSession, createPortalSession, deleteAccount, exportUserData } from '../../api/client';
+import { getMe, updateProfile, createCheckoutSession, createPortalSession, deleteAccount, exportUserData, syncSubscription } from '../../api/client';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../../components/Navbar/Navbar';
 import { toast } from 'react-hot-toast';
@@ -28,7 +28,31 @@ export default function Profile() {
   }
 
   useEffect(() => {
-    loadUser();
+    async function handleStripeRedirectAndLoad() {
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const sessionId = params ? params.get("session_id") : null;
+      const checkoutSuccess = params && params.get("checkout_success") === "true";
+      const checkoutCancel = params && params.get("checkout_cancel") === "true";
+
+      if (checkoutSuccess && sessionId) {
+        try {
+          const res = await syncSubscription(sessionId);
+          if (res && res.access_token) {
+            localStorage.setItem("token", res.access_token);
+          }
+          toast.success("Félicitations, vous êtes maintenant Premium ! 👑", { id: "stripe_success" });
+        } catch (syncErr) {
+          toast.error("Erreur de synchronisation : " + syncErr.message);
+        }
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (checkoutCancel) {
+        toast.error("L'abonnement a été annulé.", { id: "stripe_cancel" });
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      await loadUser();
+    }
+    handleStripeRedirectAndLoad();
   }, []);
 
   const handleSaveProfile = async (e) => {
@@ -71,7 +95,7 @@ export default function Profile() {
   const handleCheckout = async () => {
     setCheckoutLoading(true);
     try {
-      const data = await createCheckoutSession();
+      const data = await createCheckoutSession('/profile');
       window.location.href = data.url;
     } catch (err) {
       toast.error(err.message);
@@ -83,7 +107,7 @@ export default function Profile() {
   const handlePortal = async () => {
     setCheckoutLoading(true);
     try {
-      const data = await createPortalSession();
+      const data = await createPortalSession('/profile');
       window.location.href = data.url;
     } catch (err) {
       toast.error(err.message);

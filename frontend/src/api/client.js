@@ -232,10 +232,19 @@ export async function getMe() {
   return response.json();
 }
 
-export async function createCheckoutSession() {
+export async function createCheckoutSession(returnPath = null) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
+  const path = returnPath || (typeof window !== 'undefined' ? window.location.pathname : '/stats');
   const response = await fetch(`${BASE_URL}/payments/create-checkout-session`, {
     method: "POST",
-    headers: getAuthHeaders(),
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({
+      origin: origin,
+      return_path: path,
+    }),
   });
   if (!response.ok) {
     const errData = await response.json().catch(() => ({}));
@@ -244,10 +253,19 @@ export async function createCheckoutSession() {
   return response.json();
 }
 
-export async function createPortalSession() {
+export async function createPortalSession(returnPath = null) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
+  const path = returnPath || (typeof window !== 'undefined' ? window.location.pathname : '/profile');
   const response = await fetch(`${BASE_URL}/payments/create-portal-session`, {
     method: "POST",
-    headers: getAuthHeaders(),
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({
+      origin: origin,
+      return_path: path,
+    }),
   });
   if (!response.ok) {
     const errData = await response.json().catch(() => ({}));
@@ -269,7 +287,11 @@ export async function syncSubscription(sessionId) {
     const errData = await response.json().catch(() => ({}));
     throw new Error(errData.detail || "Erreur lors de la synchronisation de l'abonnement");
   }
-  return response.json();
+  const data = await response.json();
+  if (data.access_token) {
+    localStorage.setItem("token", data.access_token);
+  }
+  return data;
 }
 
 export async function updateProfile(profileData) {

@@ -67,7 +67,23 @@ class UserMe(BaseModel):
         from_attributes = True
 
 @router.get("/me", response_model=UserMe)
-def get_me(current_user: models.User = Depends(get_current_user)):
+def get_me(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Auto-réconciliation Stripe si le statut Premium n'a pas été synchronisé
+    if current_user.stripe_customer_id and not current_user.is_premium:
+        try:
+            import stripe
+            subs = stripe.Subscription.list(customer=current_user.stripe_customer_id, status="active", limit=1)
+            if subs.data:
+                current_user.is_premium = True
+                current_user.subscription_id = subs.data[0].id
+                db.commit()
+                db.refresh(current_user)
+                logger.info("Auto-synchronisation Stripe réussie pour %s : Premium activé", current_user.email)
+        except Exception as e:
+            logger.warning("Échec auto-synchro Stripe pour %s : %s", current_user.email, e)
     return current_user
 
 class ProfileUpdate(BaseModel):

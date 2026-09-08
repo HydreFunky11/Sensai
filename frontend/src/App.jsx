@@ -11,7 +11,11 @@ import ReaderApp from './ReaderApp'; // On renomme l'ancien App.jsx
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  if (!token) return <Navigate to="/login" />;
+  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const isStripeRedirect = params && params.get('checkout_success') === 'true' && params.get('session_id');
+
+  // Si l'utilisateur revient d'un paiement Stripe réussi, laisser monter la page pour exécuter la synchronisation
+  if (!token && !isStripeRedirect) return <Navigate to="/login" />;
   return children;
 };
 

@@ -44,7 +44,10 @@ export default function Stats() {
       try {
         if (checkoutSuccess && sessionId) {
           try {
-            await syncSubscription(sessionId);
+            const res = await syncSubscription(sessionId);
+            if (res && res.access_token) {
+              localStorage.setItem("token", res.access_token);
+            }
             toast.success("Félicitations, vous êtes maintenant Premium ! 👑", { id: "stripe_success" });
           } catch (syncErr) {
             toast.error("Erreur de synchronisation de l'abonnement : " + syncErr.message);
@@ -73,7 +76,7 @@ export default function Stats() {
   const handleCheckout = async () => {
     setCheckoutLoading(true);
     try {
-      const data = await createCheckoutSession();
+      const data = await createCheckoutSession('/stats');
       window.location.href = data.url;
     } catch (err) {
       toast.error(err.message);
@@ -85,7 +88,7 @@ export default function Stats() {
   const handlePortal = async () => {
     setCheckoutLoading(true);
     try {
-      const data = await createPortalSession();
+      const data = await createPortalSession('/stats');
       window.location.href = data.url;
     } catch (err) {
       toast.error(err.message);

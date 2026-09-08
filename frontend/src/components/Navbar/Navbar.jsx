@@ -25,7 +25,7 @@ export function Navbar({ onImportClick, importing }) {
   const handleSubscribe = async () => {
     setSubscribing(true);
     try {
-      const data = await createCheckoutSession();
+      const data = await createCheckoutSession(currentPath || '/stats');
       window.location.href = data.url;
     } catch (err) {
       toast.error(err.message || "Erreur de connexion avec Stripe");
