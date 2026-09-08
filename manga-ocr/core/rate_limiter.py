@@ -32,5 +32,9 @@ class InMemoryRateLimiter:
 # 1. Limite globale standard : 100 requêtes / minute (pour l'utilisation courante de l'app)
 limiter_general = InMemoryRateLimiter(requests_limit=100, window_seconds=60)
 
-# 2. Limite stricte : 10 requêtes / minute (pour l'authentification et l'OCR/IA pour éviter le bruteforce et la ruine de quotas)
+# 2. Limite stricte : 10 requêtes / minute (pour l'authentification et l'import de gros fichiers)
 limiter_strict = InMemoryRateLimiter(requests_limit=10, window_seconds=60)
+
+# 3. Limite lecture / IA : 60 requêtes / minute (pour analyse de bulles, OCR et TTS sans bloquer la lecture)
+limiter_reader = InMemoryRateLimiter(requests_limit=60, window_seconds=60)
+

@@ -13,9 +13,18 @@ from services.detection_service import detection_service
 from core.config import DEFAULT_VOICE
 from api.deps import get_current_user
 from core.security import validate_uploaded_image
-from core.rate_limiter import limiter_strict
+from core.rate_limiter import limiter_strict, limiter_reader
 
 router = APIRouter()
+
+def is_valid_analysis_cache(data) -> bool:
+    if not isinstance(data, dict):
+        return False
+    if data.get("error"):
+        return False
+    if data.get("translation") in ["Erreur de traduction"]:
+        return False
+    return True
 
 def cleanup_old_cache(db: Session):
     try:
@@ -34,7 +43,7 @@ def cleanup_old_cache(db: Session):
         db.rollback()
         print(f"⚠️ Erreur lors du nettoyage du cache : {e}")
 
-@router.post("/detect", dependencies=[Depends(limiter_strict)])
+@router.post("/detect", dependencies=[Depends(limiter_reader)])
 async def detect_bubbles(
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = BackgroundTasks(),
@@ -73,7 +82,7 @@ async def detect_bubbles(
     except Exception as e:
         return {"error": str(e)}
 
-@router.post("/analyze", dependencies=[Depends(limiter_strict)])
+@router.post("/analyze", dependencies=[Depends(limiter_reader)])
 async def analyze_manga(
     file: UploadFile = File(...),
     lang: str = "ja",
@@ -119,7 +128,7 @@ async def analyze_manga(
             models.CacheTranslationAnalysis.crop_hash == crop_hash
         ).first()
         
-        if cached_analysis:
+        if cached_analysis and is_valid_analysis_cache(cached_analysis.result_json):
             print("🚀 Analyse/Traduction récupérée depuis le cache Niveau 1 (crop image hash)")
             return cached_analysis.result_json
             
@@ -145,7 +154,7 @@ async def analyze_manga(
             models.CacheTranslationAnalysis.text_source == text_source
         ).first()
         
-        if cached_by_text:
+        if cached_by_text and is_valid_analysis_cache(cached_by_text.result_json):
             print("🚀 Traduction récupérée depuis le cache Niveau 2 (texte source)")
             analysis = cached_by_text.result_json
             
@@ -172,7 +181,7 @@ async def analyze_manga(
             models.CacheTranslation.text_source == text_source
         ).first()
         
-        if cached_translation_simple:
+        if cached_translation_simple and is_valid_analysis_cache(cached_translation_simple.result_json):
             print("🚀 Traduction récupérée depuis le cache simple de repli")
             analysis = cached_translation_simple.result_json
             
@@ -207,32 +216,33 @@ async def analyze_manga(
                 db.rollback()
                 print(f"Erreur enregistrement log utilisation: {log_err}")
         
-        # Enregistrer dans les caches
-        try:
-            # Table simple
-            simple_cache = models.CacheTranslation(text_source=text_source, result_json=analysis)
-            db.merge(simple_cache) # merge pour écraser ou insérer
-            
-            # Table enrichie avec document/page/coordonnées
-            enriched_cache = models.CacheTranslationAnalysis(
-                crop_hash=crop_hash,
-                document_name=document_name,
-                page=page,
-                box_coordinates=parsed_coords,
-                text_source=text_source,
-                result_json=analysis
-            )
-            db.add(enriched_cache)
-            db.commit()
-        except Exception as cache_err:
-            db.rollback()
-            print(f"Erreur sauvegarde cache final: {cache_err}")
+        # Enregistrer dans les caches UNIQUEMENT si l'analyse a réussi (pas d'erreur)
+        if is_valid_analysis_cache(analysis):
+            try:
+                # Table simple
+                simple_cache = models.CacheTranslation(text_source=text_source, result_json=analysis)
+                db.merge(simple_cache) # merge pour écraser ou insérer
+                
+                # Table enrichie avec document/page/coordonnées
+                enriched_cache = models.CacheTranslationAnalysis(
+                    crop_hash=crop_hash,
+                    document_name=document_name,
+                    page=page,
+                    box_coordinates=parsed_coords,
+                    text_source=text_source,
+                    result_json=analysis
+                )
+                db.add(enriched_cache)
+                db.commit()
+            except Exception as cache_err:
+                db.rollback()
+                print(f"Erreur sauvegarde cache final: {cache_err}")
             
         return analysis
     except Exception as e:
         return {"error": "Problème d'analyse", "details": str(e)}
 
-@router.get("/tts", dependencies=[Depends(limiter_strict)])
+@router.get("/tts", dependencies=[Depends(limiter_reader)])
 async def text_to_speech(text: str, voice: str = DEFAULT_VOICE):
     try:
         audio_data = await tts_service.generate_audio(text, voice)

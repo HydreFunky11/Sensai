@@ -1,6 +1,9 @@
 import json
+import logging
 from groq import Groq
-from core.config import GROQ_API_KEY, MODEL_NAME
+from core.config import GROQ_API_KEY, MODEL_NAME, MAX_TOKENS
+
+logger = logging.getLogger("sensai.llm")
 
 class LLMService:
     def __init__(self):
@@ -38,7 +41,6 @@ class LLMService:
         }}
         """
 
-
         try:
             completion = self.client.chat.completions.create(
                 messages=[
@@ -47,11 +49,13 @@ class LLMService:
                 ],
                 model=MODEL_NAME,
                 temperature=0,
+                max_tokens=MAX_TOKENS,
                 response_format={"type": "json_object"},
             )
-            return json.loads(completion.choices[0].message.content)
+            content = completion.choices[0].message.content
+            return json.loads(content)
         except Exception as e:
-            print(f"❌ Erreur Groq : {e}")
+            logger.error(f"❌ Erreur LLM ({MODEL_NAME}) : {e}")
             return {
                 "original": text_source,
                 "translation": "Erreur de traduction",
