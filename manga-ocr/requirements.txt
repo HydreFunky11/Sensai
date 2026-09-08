@@ -155,3 +155,4 @@ uritemplate==4.2.0
 urllib3==2.6.3
 uvicorn==0.40.0
 yarl==1.22.0
+genanki==0.13.1

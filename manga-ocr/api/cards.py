@@ -1,8 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime, timedelta
+import tempfile
+import zipfile
+import sqlite3
+import os
+import re
+import genanki
 from db.database import get_db
 from db import models
 from api.deps import get_current_user
@@ -109,6 +116,237 @@ def delete_deck(deck_id: int, db: Session = Depends(get_db), current_user: model
     db.delete(deck)
     db.commit()
     return {"message": "Dossier supprimé avec succès"}
+
+@router.get("/decks/{deck_id}/export-anki")
+def export_deck_anki(
+    deck_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Exporte un deck SensAI au format Anki (.apkg)"""
+    deck = db.query(models.Deck).filter(models.Deck.id == deck_id, models.Deck.user_id == current_user.id).first()
+    if not deck:
+        raise HTTPException(status_code=404, detail="Dossier non trouvé")
+    
+    cards = db.query(models.Flashcard).filter(models.Flashcard.deck_id == deck_id).all()
+    if not cards:
+        raise HTTPException(status_code=400, detail="Ce dossier ne contient aucune fiche à exporter")
+
+    # Modèle Anki personnalisé SensAI
+    model = genanki.Model(
+        1607392319,
+        'SensAI Model',
+        fields=[
+            {'name': 'Expression'},
+            {'name': 'Reading'},
+            {'name': 'Meaning'},
+            {'name': 'Context'},
+            {'name': 'Breakdown'}
+        ],
+        templates=[
+            {
+                'name': 'SensAI Card',
+                'qfmt': '<div class="card"><div class="japanese">{{Expression}}</div></div>',
+                'afmt': '''{{FrontSide}}
+<hr id="answer">
+<div class="reading">{{Reading}}</div>
+<div class="meaning">{{Meaning}}</div>
+{{#Context}}<div class="context">{{Context}}</div>{{/Context}}
+{{#Breakdown}}<div class="breakdown">{{Breakdown}}</div>{{/Breakdown}}''',
+            },
+        ],
+        css='''
+        .card { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; text-align: center; color: #0f172a; background-color: #ffffff; padding: 24px; border-radius: 12px; }
+        .japanese { font-size: 32px; font-weight: bold; margin-bottom: 12px; color: #1e293b; }
+        .reading { font-size: 20px; color: #6366f1; font-weight: 500; margin-bottom: 8px; }
+        .meaning { font-size: 18px; color: #334155; margin-bottom: 12px; }
+        .context { font-size: 14px; color: #64748b; font-style: italic; margin-top: 10px; padding: 6px 12px; background: #f1f5f9; border-radius: 6px; display: inline-block; }
+        .breakdown { font-size: 13px; color: #475569; margin-top: 10px; text-align: left; }
+        '''
+    )
+
+    genanki_deck_id = 1000000000 + (deck.id % 900000000)
+    anki_deck = genanki.Deck(genanki_deck_id, f"SensAI::{deck.title}")
+
+    for card in cards:
+        breakdown_str = ""
+        if card.breakdown and isinstance(card.breakdown, list):
+            items = []
+            for item in card.breakdown:
+                if isinstance(item, dict):
+                    word = item.get("word") or item.get("kanji") or ""
+                    reading = item.get("reading") or item.get("kana") or ""
+                    meaning = item.get("meaning") or item.get("translation") or ""
+                    part = item.get("type") or ""
+                    items.append(f"<b>{word}</b> [{reading}] : {meaning} {f'<i>({part})</i>' if part else ''}")
+                elif isinstance(item, str):
+                    items.append(item)
+            if items:
+                breakdown_str = "<ul style='text-align: left; padding-left: 20px;'>" + "".join(f"<li>{it}</li>" for it in items) + "</ul>"
+
+        note = genanki.Note(
+            model=model,
+            fields=[
+                card.text_source or "",
+                card.romaji or "",
+                card.translation or "",
+                card.context_note or "",
+                breakdown_str
+            ]
+        )
+        anki_deck.add_note(note)
+
+    tmp_file = tempfile.NamedTemporaryFile(suffix=".apkg", delete=False)
+    tmp_path = tmp_file.name
+    tmp_file.close()
+
+    genanki.Package(anki_deck).write_to_file(tmp_path)
+    background_tasks.add_task(os.remove, tmp_path)
+
+    safe_title = re.sub(r'[^\w\s-]', '', deck.title).strip().replace(' ', '_') or "deck"
+    filename = f"{safe_title}.apkg"
+
+    return FileResponse(
+        path=tmp_path,
+        filename=filename,
+        media_type="application/octet-stream"
+    )
+
+@router.post("/decks/import-anki", response_model=DeckResponse)
+async def import_deck_anki(
+    file: UploadFile = File(...),
+    title: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Importe un fichier de deck Anki (.apkg ou .tsv/.txt/.csv)"""
+    if not current_user.is_premium:
+        deck_count = db.query(models.Deck).filter(models.Deck.user_id == current_user.id).count()
+        if deck_count >= 5:
+            raise HTTPException(
+                status_code=403,
+                detail="Limite de 5 dossiers de révision atteinte pour les comptes gratuits. Passez à SensAI Premium pour un nombre illimité !"
+            )
+
+    filename = file.filename or "deck_importe"
+    deck_name = title.strip() if title and title.strip() else os.path.splitext(filename)[0]
+    deck_name = deck_name.replace('_', ' ').strip() or "Deck Importé"
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Fichier vide")
+
+    cards_to_create = []
+
+    if filename.lower().endswith(".apkg") or contents[:2] == b'PK':
+        try:
+            with tempfile.TemporaryDirectory() as extract_dir:
+                zip_path = os.path.join(extract_dir, "archive.zip")
+                with open(zip_path, "wb") as f:
+                    f.write(contents)
+
+                with zipfile.ZipFile(zip_path, 'r') as z:
+                    z.extractall(extract_dir)
+
+                db_file = os.path.join(extract_dir, 'collection.anki2')
+                if not os.path.exists(db_file):
+                    db_file = os.path.join(extract_dir, 'collection.anki21')
+
+                if not os.path.exists(db_file):
+                    raise HTTPException(status_code=400, detail="Format APKG invalide : base de données Anki introuvable")
+
+                conn = sqlite3.connect(db_file)
+                c = conn.cursor()
+                c.execute('SELECT flds FROM notes')
+                rows = c.fetchall()
+                conn.close()
+
+                for row in rows:
+                    if not row or not row[0]:
+                        continue
+                    flds = row[0].split('\x1f')
+                    clean_flds = [re.sub(r'<[^>]+>', '', f).strip() for f in flds]
+                    if not clean_flds or not clean_flds[0]:
+                        continue
+
+                    text_source = clean_flds[0]
+                    romaji = clean_flds[1] if len(clean_flds) > 1 and len(clean_flds[1]) < 80 else None
+                    translation = clean_flds[2] if len(clean_flds) > 2 else (clean_flds[1] if len(clean_flds) > 1 else text_source)
+                    context_note = clean_flds[3] if len(clean_flds) > 3 else "Importé depuis Anki"
+
+                    cards_to_create.append({
+                        "text_source": text_source,
+                        "translation": translation or text_source,
+                        "romaji": romaji,
+                        "context_note": context_note
+                    })
+        except zipfile.BadZipFile:
+            raise HTTPException(status_code=400, detail="Fichier .apkg corrompu ou invalide")
+    else:
+        try:
+            text = contents.decode("utf-8-sig", errors="replace")
+            lines = text.splitlines()
+            for line in lines:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "\t" in line:
+                    parts = line.split("\t")
+                elif ";" in line:
+                    parts = line.split(";")
+                else:
+                    parts = line.split(",")
+
+                clean_parts = [re.sub(r'<[^>]+>', '', p).strip() for p in parts]
+                if not clean_parts or not clean_parts[0]:
+                    continue
+
+                text_source = clean_parts[0]
+                translation = clean_parts[1] if len(clean_parts) > 1 else text_source
+                romaji = clean_parts[2] if len(clean_parts) > 2 else None
+                context_note = clean_parts[3] if len(clean_parts) > 3 else "Importé depuis Anki"
+
+                cards_to_create.append({
+                    "text_source": text_source,
+                    "translation": translation,
+                    "romaji": romaji,
+                    "context_note": context_note
+                })
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Erreur de lecture du fichier texte: {str(e)}")
+
+    if not cards_to_create:
+        raise HTTPException(status_code=400, detail="Aucune carte valide n'a pu être extraite du fichier")
+
+    if not current_user.is_premium and len(cards_to_create) > 15:
+        cards_to_create = cards_to_create[:15]
+
+    db_deck = models.Deck(
+        user_id=current_user.id,
+        title=deck_name,
+        description=f"Importé le {datetime.now().strftime('%d/%m/%Y')} ({len(cards_to_create)} cartes)"
+    )
+    db.add(db_deck)
+    db.commit()
+    db.refresh(db_deck)
+
+    for c_data in cards_to_create:
+        fc = models.Flashcard(
+            deck_id=db_deck.id,
+            text_source=c_data["text_source"],
+            translation=c_data["translation"],
+            romaji=c_data.get("romaji"),
+            context_note=c_data.get("context_note")
+        )
+        db.add(fc)
+        db.commit()
+        db.refresh(fc)
+        rs = models.ReviewStats(flashcard_id=fc.id)
+        db.add(rs)
+
+    db.commit()
+    return db_deck
 
 @router.delete("/{card_id}")
 def delete_card(card_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):

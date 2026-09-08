@@ -41,10 +41,12 @@ vi.mock('../../api/client', () => {
     submitCardReview: vi.fn(() => Promise.resolve({ message: "Review saved" })),
     getAudioUrl: vi.fn(() => "http://mock-audio-url"),
     logDeckCompletion: vi.fn(() => Promise.resolve({ message: "Complete" })),
+    exportDeckAnki: vi.fn(() => Promise.resolve()),
+    importDeckAnki: vi.fn(() => Promise.resolve({ id: 2, title: "Deck Importé" })),
   };
 });
 
-import { getDecks, getDueFlashcards, submitCardReview } from '../../api/client';
+import { getDecks, getDueFlashcards, submitCardReview, exportDeckAnki, importDeckAnki } from '../../api/client';
 
 describe('Composant Study (Révisions)', () => {
   beforeEach(() => {
@@ -216,6 +218,27 @@ describe('Composant Study (Révisions)', () => {
       expect(canvas).toBeInTheDocument();
       expect(canvas.tabIndex).toBe(0);
       expect(canvas.getAttribute('aria-label')).toContain("Zone d'écriture pour le tracé du caractère romaji");
+    });
+  });
+
+  it('devrait afficher les boutons d\'import et d\'export Anki et déclencher l\'export', async () => {
+    render(<Study />);
+
+    await waitFor(() => {
+      expect(getDecks).toHaveBeenCalled();
+    });
+
+    // Vérifier la présence du bouton d'import Anki dans le header
+    expect(screen.getByRole('button', { name: /importer un deck anki/i })).toBeInTheDocument();
+
+    // Vérifier la présence du bouton d'export Anki sur le deck
+    const exportBtn = screen.getByRole('button', { name: /^📦 Anki$/i });
+    expect(exportBtn).toBeInTheDocument();
+
+    // Clic sur l'export Anki
+    fireEvent.click(exportBtn);
+    await waitFor(() => {
+      expect(exportDeckAnki).toHaveBeenCalledWith(1, 'Dossier Principal');
     });
   });
 });

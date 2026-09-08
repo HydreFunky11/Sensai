@@ -159,3 +159,62 @@ def test_stats_include_learned_alphabets(client):
 
     assert learned["katakana"]["count"] == 0
     assert learned["katakana"]["percentage"] == 0.0
+
+def test_export_and_import_anki(client):
+    headers = get_auth_headers(client, "anki@example.com")
+
+    # 1. Créer un deck et une carte
+    deck_res = client.post("/cards/decks", json={"title": "Manga Anki Test"}, headers=headers)
+    assert deck_res.status_code == 200
+    deck_id = deck_res.json()["id"]
+
+    card_res = client.post(
+        "/cards/",
+        json={
+            "deck_id": deck_id,
+            "text_source": "猫",
+            "translation": "Chat",
+            "romaji": "neko",
+            "context_note": "Animal"
+        },
+        headers=headers
+    )
+    assert card_res.status_code == 200
+
+    # 2. Exporter le deck en format Anki (.apkg)
+    export_res = client.get(f"/cards/decks/{deck_id}/export-anki", headers=headers)
+    assert export_res.status_code == 200
+    assert export_res.headers.get("content-type") == "application/octet-stream"
+    apkg_bytes = export_res.content
+    assert len(apkg_bytes) > 0
+    assert apkg_bytes[:2] == b"PK" # Zip signature
+
+    # 3. Importer le deck Anki (.apkg)
+    files = {
+        "file": ("mon_export.apkg", apkg_bytes, "application/octet-stream")
+    }
+    data = {"title": "Deck Importé Anki"}
+    import_res = client.post("/cards/decks/import-anki", files=files, data=data, headers=headers)
+    assert import_res.status_code == 200
+    imported_deck_id = import_res.json()["id"]
+    assert import_res.json()["title"] == "Deck Importé Anki"
+
+    # Vérifier que les cartes importées sont bien présentes
+    cards_res = client.get(f"/cards/?deck_id={imported_deck_id}", headers=headers)
+    assert cards_res.status_code == 200
+    cards = cards_res.json()
+    assert len(cards) == 1
+    assert cards[0]["text_source"] == "猫"
+
+    # 4. Tester l'import au format texte TSV
+    tsv_content = "犬\tChien\tinu\tMammifère\n本\tLivre\thon\tObjet".encode("utf-8")
+    files_tsv = {
+        "file": ("vocab.tsv", tsv_content, "text/tab-separated-values")
+    }
+    import_tsv_res = client.post("/cards/decks/import-anki", files=files_tsv, data={"title": "Vocabulaire TSV"}, headers=headers)
+    assert import_tsv_res.status_code == 200
+    tsv_deck_id = import_tsv_res.json()["id"]
+
+    tsv_cards_res = client.get(f"/cards/?deck_id={tsv_deck_id}", headers=headers)
+    assert tsv_cards_res.status_code == 200
+    assert len(tsv_cards_res.json()) == 2

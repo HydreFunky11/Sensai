@@ -122,6 +122,44 @@ export async function deleteDeck(deckId) {
   return response.json();
 }
 
+export async function exportDeckAnki(deckId, deckTitle = "deck") {
+  const response = await fetch(`${BASE_URL}/cards/decks/${deckId}/export-anki`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Erreur lors de l'export Anki");
+  }
+  const blob = await response.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = downloadUrl;
+  const safeName = (deckTitle || "deck").replace(/[^a-zA-Z0-9_\-\s]/g, "").trim().replace(/\s+/g, "_");
+  a.download = `${safeName}.apkg`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(downloadUrl);
+}
+
+export async function importDeckAnki(file, title = "") {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (title) formData.append("title", title);
+
+  const response = await fetch(`${BASE_URL}/cards/decks/import-anki`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Erreur lors de l'import Anki");
+  }
+  return response.json();
+}
+
 export async function deleteFlashcard(cardId) {
   const response = await fetch(`${BASE_URL}/cards/${cardId}`, {
     method: "DELETE",

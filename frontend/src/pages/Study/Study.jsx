@@ -10,6 +10,8 @@ import {
   deleteFlashcard,
   createDeck,
   logDeckCompletion,
+  exportDeckAnki,
+  importDeckAnki,
 } from "../../api/client";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "../../components/Navbar/Navbar";
@@ -22,6 +24,11 @@ export default function Study() {
 
   // Stats
   const [deckStats, setDeckStats] = useState({}); // { [deckId]: { total: X, due: Y } }
+
+  // Anki Import/Export
+  const [isImporting, setIsImporting] = useState(false);
+  const [isExportingId, setIsExportingId] = useState(null);
+  const ankiFileInputRef = useRef(null);
 
   // Study session
   const [cards, setCards] = useState([]);
@@ -570,6 +577,36 @@ export default function Study() {
     }
   };
 
+  const handleExportAnki = async (deck) => {
+    try {
+      setIsExportingId(deck.id);
+      await exportDeckAnki(deck.id, deck.title);
+      toast.success(`Deck "${deck.title}" exporté au format Anki (.apkg) !`);
+    } catch (e) {
+      toast.error("Erreur lors de l'export Anki: " + e.message);
+    } finally {
+      setIsExportingId(null);
+    }
+  };
+
+  const handleImportAnki = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      setIsImporting(true);
+      const newDeck = await importDeckAnki(file);
+      await loadDecksAndStats();
+      toast.success(`Deck "${newDeck.title}" importé avec succès depuis Anki !`);
+    } catch (err) {
+      toast.error("Erreur lors de l'import: " + err.message);
+    } finally {
+      setIsImporting(false);
+      if (ankiFileInputRef.current) {
+        ankiFileInputRef.current.value = "";
+      }
+    }
+  };
+
   const playAudio = (text) => {
     if (!text) return;
     const url = getAudioUrl(text);
@@ -599,6 +636,23 @@ export default function Study() {
                   Entraînez votre mémoire avec notre système de répétition
                   espacée (SRS).
                 </p>
+              </div>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <input
+                  type="file"
+                  ref={ankiFileInputRef}
+                  accept=".apkg,.tsv,.txt,.csv"
+                  style={{ display: "none" }}
+                  onChange={handleImportAnki}
+                />
+                <button
+                  onClick={() => ankiFileInputRef.current && ankiFileInputRef.current.click()}
+                  disabled={isImporting}
+                  style={styles.btnImportAnki}
+                  title="Importer un paquet Anki (.apkg) ou fichier texte (.tsv / .txt)"
+                >
+                  {isImporting ? "⏳ Import en cours..." : "📥 Importer un deck Anki"}
+                </button>
               </div>
             </div>
 
@@ -667,6 +721,14 @@ export default function Study() {
                         style={styles.btnEdit}
                       >
                         Éditer
+                      </button>
+                      <button
+                        onClick={() => handleExportAnki(deck)}
+                        disabled={isExportingId === deck.id || stats.total === 0}
+                        style={stats.total > 0 ? styles.btnExportAnki : styles.btnExportAnkiDisabled}
+                        title="Exporter ce dossier au format Anki (.apkg)"
+                      >
+                        {isExportingId === deck.id ? "Export..." : "📦 Anki"}
                       </button>
                       <button
                         onClick={() => handleDeleteDeck(deck.id)}
@@ -1062,15 +1124,24 @@ export default function Study() {
                   Renommez le dossier ou supprimez des fiches obsolètes.
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  setViewMode("decks");
-                  loadDecksAndStats();
-                }}
-                style={styles.btnBack}
-              >
-                Fermer l'édition
-              </button>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  onClick={() => handleExportAnki(selectedDeck)}
+                  disabled={isExportingId === selectedDeck.id || deckCards.length === 0}
+                  style={deckCards.length > 0 ? styles.btnExportAnkiHeader : styles.btnExportAnkiDisabled}
+                >
+                  {isExportingId === selectedDeck.id ? "Exportation..." : "📦 Exporter vers Anki (.apkg)"}
+                </button>
+                <button
+                  onClick={() => {
+                    setViewMode("decks");
+                    loadDecksAndStats();
+                  }}
+                  style={styles.btnBack}
+                >
+                  Fermer l'édition
+                </button>
+              </div>
             </div>
 
             {/* Formulaire Renommer */}
@@ -1313,63 +1384,111 @@ const styles = {
   },
   deckActions: {
     display: "grid",
-    gridTemplateColumns: "2fr 1fr 1fr",
-    gap: "8px",
+    gridTemplateColumns: "1.4fr 0.9fr 0.9fr 0.9fr",
+    gap: "6px",
     marginTop: "10px",
   },
   btnStudy: {
-    padding: "10px",
+    padding: "10px 8px",
     background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
     color: "white",
     border: "none",
     borderRadius: "8px",
     cursor: "pointer",
-    fontSize: "0.9rem",
+    fontSize: "0.85rem",
     fontWeight: "600",
     boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)",
     transition: "all 0.2s ease",
   },
   btnStudyFree: {
-    padding: "10px",
+    padding: "10px 8px",
     background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    fontWeight: "600",
+    boxShadow: "0 4px 12px rgba(139, 92, 246, 0.2)",
+    transition: "all 0.2s ease",
+  },
+  btnStudyDisabled: {
+    padding: "10px 8px",
+    backgroundColor: "#2d2d2d",
+    color: "#64748b",
+    border: "1px solid #3f3f3f",
+    borderRadius: "8px",
+    cursor: "not-allowed",
+    fontSize: "0.85rem",
+    fontWeight: "600",
+  },
+  btnEdit: {
+    padding: "10px 6px",
+    backgroundColor: "#1e1e1e",
+    color: "#cbd5e1",
+    border: "1px solid #3f3f3f",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    fontWeight: "600",
+    transition: "all 0.2s ease",
+  },
+  btnExportAnki: {
+    padding: "10px 6px",
+    backgroundColor: "#1e293b",
+    color: "#93c5fd",
+    border: "1px solid #3b82f6",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    fontWeight: "600",
+    transition: "all 0.2s ease",
+  },
+  btnExportAnkiDisabled: {
+    padding: "10px 6px",
+    backgroundColor: "#1e1e1e",
+    color: "#64748b",
+    border: "1px solid #334155",
+    borderRadius: "8px",
+    cursor: "not-allowed",
+    fontSize: "0.85rem",
+    fontWeight: "600",
+  },
+  btnExportAnkiHeader: {
+    padding: "10px 16px",
+    background: "linear-gradient(135deg, #0284c7, #0369a1)",
     color: "white",
     border: "none",
     borderRadius: "8px",
     cursor: "pointer",
     fontSize: "0.9rem",
     fontWeight: "600",
-    boxShadow: "0 4px 12px rgba(139, 92, 246, 0.2)",
+    boxShadow: "0 4px 12px rgba(2, 132, 199, 0.25)",
     transition: "all 0.2s ease",
   },
-  btnStudyDisabled: {
-    padding: "10px",
-    backgroundColor: "#2d2d2d",
-    color: "#64748b",
-    border: "1px solid #3f3f3f",
-    borderRadius: "8px",
-    cursor: "not-allowed",
-    fontSize: "0.9rem",
-    fontWeight: "600",
-  },
-  btnEdit: {
-    padding: "10px",
-    backgroundColor: "#1e1e1e",
-    color: "#cbd5e1",
-    border: "1px solid #3f3f3f",
-    borderRadius: "8px",
+  btnImportAnki: {
+    padding: "10px 18px",
+    background: "linear-gradient(135deg, #059669, #047857)",
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
     cursor: "pointer",
-    fontSize: "0.9rem",
+    fontSize: "0.95rem",
     fontWeight: "600",
+    boxShadow: "0 4px 14px rgba(5, 150, 105, 0.3)",
     transition: "all 0.2s ease",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
   },
   btnDeleteDeck: {
-    padding: "10px",
+    padding: "10px 6px",
     backgroundColor: "#3f1a1a",
     color: "#fca5a5",
     border: "1px solid #ef4444",
     borderRadius: "8px",
     cursor: "pointer",
-    fontSize: "0.9rem",
+    fontSize: "0.85rem",
     fontWeight: "600",
     transition: "all 0.2s ease",
   },
