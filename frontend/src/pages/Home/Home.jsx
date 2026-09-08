@@ -7,10 +7,32 @@ import { toast } from 'react-hot-toast';
 export default function Home() {
   const [library, setLibrary] = useState([]);
   const [folders, setFolders] = useState([]);
-  const [selectedFolderId, setSelectedFolderId] = useState(null);
+  const [selectedFolderId, setSelectedFolderId] = useState(() => {
+    try {
+      const saved = localStorage.getItem('home_selected_folder_id');
+      if (saved === null || saved === '' || saved === 'null') return null;
+      const parsed = parseInt(saved, 10);
+      return isNaN(parsed) ? null : parsed;
+    } catch {
+      return null;
+    }
+  });
   
-  const [sortBy, setSortBy] = useState('date');
-  const [order, setOrder] = useState('desc');
+  const [sortBy, setSortBy] = useState(() => {
+    try {
+      return localStorage.getItem('home_sort_by') || 'date';
+    } catch {
+      return 'date';
+    }
+  });
+
+  const [order, setOrder] = useState(() => {
+    try {
+      return localStorage.getItem('home_sort_order') || 'desc';
+    } catch {
+      return 'desc';
+    }
+  });
 
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -47,6 +69,34 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    try {
+      if (selectedFolderId === null) {
+        localStorage.removeItem('home_selected_folder_id');
+      } else {
+        localStorage.setItem('home_selected_folder_id', selectedFolderId.toString());
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [selectedFolderId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('home_sort_by', sortBy);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [sortBy]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('home_sort_order', order);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [order]);
+
+  useEffect(() => {
     loadLibrary(selectedFolderId, sortBy, order);
   }, [selectedFolderId, sortBy, order]);
 
@@ -54,10 +104,17 @@ export default function Home() {
     try {
       const f = await getLibraryFolders();
       setFolders(f);
+      setSelectedFolderId(prev => {
+        if (prev !== null && !f.some(folder => folder.id === prev)) {
+          return null;
+        }
+        return prev;
+      });
     } catch (e) {
       console.error("Erreur folders", e);
     }
   }
+
 
   async function loadLibrary(folderId, sortMethod = sortBy, sortOrder = order) {
     setLoading(true);

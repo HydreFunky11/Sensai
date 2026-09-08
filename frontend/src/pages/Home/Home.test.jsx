@@ -136,4 +136,54 @@ describe('Page Home - Modale d\'Importation', () => {
       expect(importToLibrary).toHaveBeenCalledWith(file, 1, 'One Piece Tome 100', 13, 26);
     });
   });
+
+  it('devrait restaurer les filtres et le tri depuis le localStorage au montage', async () => {
+    localStorage.setItem('home_selected_folder_id', '1');
+    localStorage.setItem('home_sort_by', 'name');
+    localStorage.setItem('home_sort_order', 'asc');
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(getLibrary).toHaveBeenCalledWith(1, 'name', 'asc');
+    });
+
+    localStorage.clear();
+  });
+
+  it('devrait persister la sélection de dossier et le tri dans le localStorage lors des changements', async () => {
+    localStorage.clear();
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(getLibraryFolders).toHaveBeenCalled();
+    });
+
+    // Cliquer sur le dossier mocké
+    const folderItem = await screen.findByText(/Dossier Test/);
+    fireEvent.click(folderItem);
+
+    await waitFor(() => {
+      expect(localStorage.getItem('home_selected_folder_id')).toBe('1');
+    });
+
+    // Changer le tri
+    const sortSelect = screen.getByLabelText(/Trier par/i);
+    fireEvent.change(sortSelect, { target: { value: 'name' } });
+
+    await waitFor(() => {
+      expect(localStorage.getItem('home_sort_by')).toBe('name');
+    });
+
+    // Changer l'ordre
+    const orderBtn = screen.getByLabelText(/Ordre croissant/i);
+    fireEvent.click(orderBtn);
+
+    await waitFor(() => {
+      expect(localStorage.getItem('home_sort_order')).toBe('asc');
+    });
+
+    localStorage.clear();
+  });
 });
+
