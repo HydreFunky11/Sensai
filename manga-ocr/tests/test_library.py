@@ -122,3 +122,17 @@ def test_import_validation_security(client):
     )
     assert response_mime.status_code == status.HTTP_400_BAD_REQUEST
     assert "Format de fichier non autorisé" in response_mime.json()["detail"]
+
+def test_import_oversized_file(client, monkeypatch):
+    import core.security as sec
+    monkeypatch.setattr(sec, "MAX_MANGA_SIZE", 100)
+    headers = get_auth_headers(client, "oversized@example.com")
+    pdf_bytes = create_mock_pdf(1)
+    response = client.post(
+        "/library/import",
+        files={"file": ("big_manga.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
+        headers=headers
+    )
+    assert response.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    assert "dépasse la taille maximale autorisée" in response.json()["detail"]
+

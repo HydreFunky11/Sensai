@@ -70,7 +70,7 @@ async def validate_uploaded_image(file: UploadFile):
 
 import fitz  # PyMuPDF
 
-MAX_MANGA_SIZE = 100 * 1024 * 1024  # 100 Mo
+MAX_MANGA_SIZE = 500 * 1024 * 1024  # 500 Mo
 ALLOWED_MANGA_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
 
 async def validate_uploaded_manga(file: UploadFile):
@@ -81,25 +81,28 @@ async def validate_uploaded_manga(file: UploadFile):
             detail="Format de fichier non autorisé. Formats acceptés : PDF, JPEG, PNG, WEBP."
         )
     
-    # 2. Lecture du fichier pour vérification de la taille (max 100 Mo)
-    contents = await file.read()
-    if len(contents) > MAX_MANGA_SIZE:
+    # 2. Vérification de la taille (max 500 Mo) sans saturer la RAM
+    try:
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        file.file.seek(0)
+    except Exception:
+        file_size = 0
+
+    if file_size > MAX_MANGA_SIZE:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Le fichier dépasse la taille maximale autorisée de {MAX_MANGA_SIZE / (1024 * 1024)} Mo pour un manga."
+            detail=f"Le fichier dépasse la taille maximale autorisée de {int(MAX_MANGA_SIZE / (1024 * 1024))} Mo pour un manga."
         )
     
-    # Repositionner le curseur
-    await file.seek(0)
-
-    # 3. Vérification d'intégrité selon le type
+    # 3. Vérification d'intégrité selon le type sans dupliquer la mémoire
     if file.content_type == "application/pdf":
         try:
-            # Vérifier si le PDF s'ouvre correctement en mémoire
-            doc = fitz.open(stream=contents, filetype="pdf")
-            if len(doc) == 0:
-                raise ValueError("PDF vide")
-            doc.close()
+            # Vérification de l'en-tête PDF (%PDF-)
+            header = await file.read(1024)
+            await file.seek(0)
+            if not header.startswith(b"%PDF"):
+                raise ValueError("Signature PDF invalide")
         except Exception:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -107,6 +110,8 @@ async def validate_uploaded_manga(file: UploadFile):
             )
     else:
         try:
+            contents = await file.read()
+            await file.seek(0)
             img = Image.open(BytesIO(contents))
             img.verify()
         except Exception:

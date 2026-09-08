@@ -445,7 +445,8 @@ export async function importToLibrary(file, folderId = null, title = null, pageS
   });
 
   if (!response.ok) {
-    throw new Error("Erreur lors de l'importation");
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de l'importation");
   }
   return response.json();
 }

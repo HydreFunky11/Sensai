@@ -57,10 +57,13 @@ def generate_b64_thumbnail(file_path: str, ext: str) -> str | None:
         img = None
         if ext.lower() == 'pdf':
             doc = fitz.open(file_path)
-            if len(doc) > 0:
-                page = doc.load_page(0)
-                pix = page.get_pixmap(matrix=fitz.Matrix(0.5, 0.5))
-                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            try:
+                if len(doc) > 0:
+                    page = doc.load_page(0)
+                    pix = page.get_pixmap(matrix=fitz.Matrix(0.5, 0.5))
+                    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            finally:
+                doc.close()
         elif ext.lower() in ['jpg', 'jpeg', 'png', 'webp']:
             img = Image.open(file_path)
             if img.mode != 'RGB':
@@ -138,18 +141,17 @@ async def import_manga(
     filename = f"{uuid.uuid4().hex}.{ext}"
     file_path = os.path.join(UPLOAD_DIR, filename)
 
-    # Lire le contenu du fichier uploadé
-    contents = await file.read()
-    
     # Si c'est un PDF et qu'une plage de pages est spécifiée, extraire les pages
     pages_extracted = False
     if ext.lower() == 'pdf' and page_start is not None and page_end is not None:
+        contents = await file.read()
         try:
             src_doc = fitz.open(stream=contents, filetype="pdf")
             total_pages = len(src_doc)
             
             # Validation des index de pages
             if page_start < 1 or page_end > total_pages or page_start > page_end:
+                src_doc.close()
                 logger.warning("Échec découpe PDF pour %s : plage demandée %s-%s invalide (total de pages: %d)", current_user.email, page_start, page_end, total_pages)
                 raise HTTPException(
                     status_code=400,
@@ -173,10 +175,11 @@ async def import_manga(
                 detail=f"Erreur lors de la découpe des pages du PDF : {str(e)}"
             )
 
-    # Si aucun découpage n'a été effectué, sauvegarder le fichier entier
+    # Si aucun découpage n'a été effectué, sauvegarder en flux continu directement sur disque (zéro surcharge RAM)
     if not pages_extracted:
+        await file.seek(0)
         with open(file_path, "wb") as buffer:
-            buffer.write(contents)
+            shutil.copyfileobj(file.file, buffer)
 
     # Déterminer le titre personnalisé ou celui d'origine
     manga_title = title.strip() if title and title.strip() else file.filename.rsplit('.', 1)[0]
