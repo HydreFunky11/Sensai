@@ -905,3 +905,4 @@ RuntimeError: Problème de test critique provoqué !
 2026-09-08 17:47:09,688 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks/import-anki "HTTP/1.1 200 OK"
 2026-09-08 17:47:09,691 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/?deck_id=1 "HTTP/1.1 200 OK"
 2026-09-08 17:47:09,701 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/1/audio "HTTP/1.1 200 OK"
+2026-09-08 18:04:21,458 - INFO - sensai.auth - [auth.py:53] - Connexion réussie pour l'utilisateur : test.test@gmail.com
