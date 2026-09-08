@@ -19,6 +19,15 @@ logger = logging.getLogger("sensai.main")
 # Création des tables dans la base de données
 models.Base.metadata.create_all(bind=engine)
 
+# Migration automatique SQLite pour la colonne audio_path
+try:
+    with engine.connect() as conn:
+        from sqlalchemy import text
+        conn.execute(text("ALTER TABLE flashcards ADD COLUMN audio_path VARCHAR"))
+        conn.commit()
+except Exception:
+    pass
+
 # Initialisation de l'API avec la dépendance de rate limiting globale
 app = FastAPI(
     title="SensAI API",

@@ -9,6 +9,8 @@ import zipfile
 import sqlite3
 import os
 import re
+import json
+import uuid
 import genanki
 from db.database import get_db
 from db import models
@@ -16,6 +18,9 @@ from api.deps import get_current_user
 from sqlalchemy.sql import func
 
 router = APIRouter(prefix="/cards", tags=["cards"])
+
+AUDIO_DIR = "uploads/audio"
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
 # --- SCHEMAS ---
 
@@ -47,6 +52,7 @@ class FlashcardResponse(BaseModel):
     romaji: Optional[str] = None
     breakdown: Optional[list] = None
     context_note: Optional[str] = None
+    audio_path: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -168,6 +174,7 @@ def export_deck_anki(
 
     genanki_deck_id = 1000000000 + (deck.id % 900000000)
     anki_deck = genanki.Deck(genanki_deck_id, f"SensAI::{deck.title}")
+    media_files = []
 
     for card in cards:
         breakdown_str = ""
@@ -185,11 +192,18 @@ def export_deck_anki(
             if items:
                 breakdown_str = "<ul style='text-align: left; padding-left: 20px;'>" + "".join(f"<li>{it}</li>" for it in items) + "</ul>"
 
+        # Vérifier si la carte possède un fichier audio à inclure dans le paquet Anki
+        reading_field = card.romaji or ""
+        if card.audio_path and os.path.exists(card.audio_path):
+            media_files.append(card.audio_path)
+            audio_base = os.path.basename(card.audio_path)
+            reading_field = f"{reading_field} [sound:{audio_base}]".strip()
+
         note = genanki.Note(
             model=model,
             fields=[
                 card.text_source or "",
-                card.romaji or "",
+                reading_field,
                 card.translation or "",
                 card.context_note or "",
                 breakdown_str
@@ -201,7 +215,10 @@ def export_deck_anki(
     tmp_path = tmp_file.name
     tmp_file.close()
 
-    genanki.Package(anki_deck).write_to_file(tmp_path)
+    package = genanki.Package(anki_deck)
+    if media_files:
+        package.media_files = media_files
+    package.write_to_file(tmp_path)
     background_tasks.add_task(os.remove, tmp_path)
 
     safe_title = re.sub(r'[^\w\s-]', '', deck.title).strip().replace(' ', '_') or "deck"
@@ -220,7 +237,7 @@ async def import_deck_anki(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Importe un fichier de deck Anki (.apkg ou .tsv/.txt/.csv)"""
+    """Importe un fichier de deck Anki (.apkg avec audio ou .tsv/.txt/.csv)"""
     if not current_user.is_premium:
         deck_count = db.query(models.Deck).filter(models.Deck.user_id == current_user.id).count()
         if deck_count >= 5:
@@ -256,6 +273,19 @@ async def import_deck_anki(
                 if not os.path.exists(db_file):
                     raise HTTPException(status_code=400, detail="Format APKG invalide : base de données Anki introuvable")
 
+                # Récupérer la table de correspondance des médias (media JSON)
+                media_map = {}
+                media_file_path = os.path.join(extract_dir, 'media')
+                if os.path.exists(media_file_path):
+                    try:
+                        with open(media_file_path, 'r', encoding='utf-8', errors='ignore') as mf:
+                            media_map = json.load(mf)
+                    except Exception:
+                        pass
+                
+                # Inversion: nom réel de fichier -> nom de fichier zip ("0", "1", etc.)
+                rev_media = {str(v): str(k) for k, v in media_map.items()}
+
                 conn = sqlite3.connect(db_file)
                 c = conn.cursor()
                 c.execute('SELECT flds FROM notes')
@@ -265,8 +295,35 @@ async def import_deck_anki(
                 for row in rows:
                     if not row or not row[0]:
                         continue
-                    flds = row[0].split('\x1f')
-                    clean_flds = [re.sub(r'<[^>]+>', '', f).strip() for f in flds]
+                    raw_flds = row[0].split('\x1f')
+                    
+                    # 1. Détection et extraction des fichiers audio
+                    card_audio_path = None
+                    for rf in raw_flds:
+                        sound_tags = re.findall(r'\[sound:([^\]]+)\]', rf) + re.findall(r'<audio[^>]*src=["\']?([^"\'>\s]+)["\']?', rf)
+                        for sref in sound_tags:
+                            zip_entry = rev_media.get(sref, sref)
+                            entry_path = os.path.join(extract_dir, zip_entry)
+                            if not os.path.exists(entry_path):
+                                entry_path = os.path.join(extract_dir, sref)
+
+                            if os.path.exists(entry_path) and os.path.isfile(entry_path):
+                                try:
+                                    safe_sref = re.sub(r'[^\w\.-]', '_', sref)
+                                    saved_filename = f"{uuid.uuid4().hex}_{safe_sref}"
+                                    dest_path = os.path.join(AUDIO_DIR, saved_filename)
+                                    with open(entry_path, "rb") as sf, open(dest_path, "wb") as df:
+                                        df.write(sf.read())
+                                    card_audio_path = dest_path
+                                    break
+                                except Exception as ex:
+                                    print(f"Erreur enregistrement audio {sref}: {ex}")
+                        if card_audio_path:
+                            break
+
+                    # 2. Nettoyage du texte des balises audio et HTML
+                    clean_flds = [re.sub(r'\[sound:[^\]]+\]', '', f) for f in raw_flds]
+                    clean_flds = [re.sub(r'<[^>]+>', '', f).strip() for f in clean_flds]
                     if not clean_flds or not clean_flds[0]:
                         continue
 
@@ -279,7 +336,8 @@ async def import_deck_anki(
                         "text_source": text_source,
                         "translation": translation or text_source,
                         "romaji": romaji,
-                        "context_note": context_note
+                        "context_note": context_note,
+                        "audio_path": card_audio_path
                     })
         except zipfile.BadZipFile:
             raise HTTPException(status_code=400, detail="Fichier .apkg corrompu ou invalide")
@@ -298,7 +356,8 @@ async def import_deck_anki(
                 else:
                     parts = line.split(",")
 
-                clean_parts = [re.sub(r'<[^>]+>', '', p).strip() for p in parts]
+                clean_parts = [re.sub(r'\[sound:[^\]]+\]', '', p) for p in parts]
+                clean_parts = [re.sub(r'<[^>]+>', '', p).strip() for p in clean_parts]
                 if not clean_parts or not clean_parts[0]:
                     continue
 
@@ -311,7 +370,8 @@ async def import_deck_anki(
                     "text_source": text_source,
                     "translation": translation,
                     "romaji": romaji,
-                    "context_note": context_note
+                    "context_note": context_note,
+                    "audio_path": None
                 })
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Erreur de lecture du fichier texte: {str(e)}")
@@ -337,7 +397,8 @@ async def import_deck_anki(
             text_source=c_data["text_source"],
             translation=c_data["translation"],
             romaji=c_data.get("romaji"),
-            context_note=c_data.get("context_note")
+            context_note=c_data.get("context_note"),
+            audio_path=c_data.get("audio_path")
         )
         db.add(fc)
         db.commit()
@@ -347,6 +408,28 @@ async def import_deck_anki(
 
     db.commit()
     return db_deck
+
+@router.get("/{card_id}/audio")
+def get_card_audio(card_id: int, db: Session = Depends(get_db)):
+    """Récupère le fichier audio natif associé à une flashcard"""
+    card = db.query(models.Flashcard).filter(models.Flashcard.id == card_id).first()
+    if not card or not card.audio_path:
+        raise HTTPException(status_code=404, detail="Fichier audio non associé à cette carte")
+    if not os.path.exists(card.audio_path):
+        raise HTTPException(status_code=404, detail="Fichier audio introuvable sur le disque")
+
+    ext = os.path.splitext(card.audio_path)[1].lower()
+    media_types = {
+        ".mp3": "audio/mpeg",
+        ".wav": "audio/wav",
+        ".ogg": "audio/ogg",
+        ".m4a": "audio/mp4",
+        ".aac": "audio/aac",
+        ".flac": "audio/flac",
+        ".opus": "audio/opus"
+    }
+    media_type = media_types.get(ext, "audio/mpeg")
+    return FileResponse(path=card.audio_path, media_type=media_type)
 
 @router.delete("/{card_id}")
 def delete_card(card_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):

@@ -50,6 +50,11 @@ export function getAudioUrl(text, voice = "ja-JP-NanamiNeural") {
   return `${BASE_URL}/tts?text=${encodeURIComponent(text)}&voice=${voice}`;
 }
 
+export function getCardAudioUrl(cardId) {
+  if (!cardId) return null;
+  return `${BASE_URL}/cards/${cardId}/audio`;
+}
+
 // Récupère le token stocké (utilisé par Auth)
 function getAuthHeaders() {
   const token = localStorage.getItem("token");

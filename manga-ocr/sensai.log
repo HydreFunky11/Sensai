@@ -824,3 +824,84 @@ Traceback (most recent call last):
 RuntimeError: Problème de test critique provoqué !
 2026-09-08 17:36:31,473 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/trigger-dummy-500-error "HTTP/1.1 500 Internal Server Error"
 2026-09-08 17:36:31,489 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/health "HTTP/1.1 200 OK"
+2026-09-08 17:44:49,722 - INFO - root - [logging_config.py:39] - Système de journalisation SensAI activé. Fichier cible : /home/hydrefunky/dev/Projet fin d'année /manga-ocr/sensai.log
+2026-09-08 17:45:00,040 - INFO - root - [logging_config.py:39] - Système de journalisation SensAI activé. Fichier cible : /home/hydrefunky/dev/Projet fin d'année /manga-ocr/sensai.log
+2026-09-08 17:45:20,939 - INFO - root - [logging_config.py:39] - Système de journalisation SensAI activé. Fichier cible : /home/hydrefunky/dev/Projet fin d'année /manga-ocr/sensai.log
+2026-09-08 17:45:43,609 - INFO - root - [logging_config.py:39] - Système de journalisation SensAI activé. Fichier cible : /home/hydrefunky/dev/Projet fin d'année /manga-ocr/sensai.log
+2026-09-08 17:46:37,716 - INFO - root - [logging_config.py:39] - Système de journalisation SensAI activé. Fichier cible : /home/hydrefunky/dev/Projet fin d'année /manga-ocr/sensai.log
+2026-09-08 17:46:42,977 - INFO - root - [logging_config.py:39] - Système de journalisation SensAI activé. Fichier cible : /home/hydrefunky/dev/Projet fin d'année /manga-ocr/sensai.log
+2026-09-08 17:46:43,419 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : deck@example.com
+2026-09-08 17:46:43,423 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,429 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,435 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,441 - INFO - httpx - [_client.py:1025] - HTTP Request: PUT http://testserver/cards/decks/2 "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,448 - INFO - httpx - [_client.py:1025] - HTTP Request: DELETE http://testserver/cards/decks/2 "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,451 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,671 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : cards@example.com
+2026-09-08 17:46:43,672 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,683 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/ "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,690 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/1/review "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,694 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/1/review "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,913 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : learned@example.com
+2026-09-08 17:46:43,914 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,919 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,924 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,927 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,931 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-09-08 17:46:43,935 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,149 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : stats@example.com
+2026-09-08 17:46:44,151 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,155 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,158 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,164 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/stats "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,375 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : anki@example.com
+2026-09-08 17:46:44,377 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,381 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,386 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/ "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,441 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks/1/export-anki "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,450 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks/import-anki "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,454 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/?deck_id=2 "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,460 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks/import-anki "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,463 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/?deck_id=3 "HTTP/1.1 200 OK"
+2026-09-08 17:46:44,675 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : ankiaudio@example.com
+2026-09-08 17:46:44,676 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:47:03,908 - INFO - root - [logging_config.py:39] - Système de journalisation SensAI activé. Fichier cible : /home/hydrefunky/dev/Projet fin d'année /manga-ocr/sensai.log
+2026-09-08 17:47:07,974 - INFO - root - [logging_config.py:39] - Système de journalisation SensAI activé. Fichier cible : /home/hydrefunky/dev/Projet fin d'année /manga-ocr/sensai.log
+2026-09-08 17:47:08,413 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : deck@example.com
+2026-09-08 17:47:08,416 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,422 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,428 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,435 - INFO - httpx - [_client.py:1025] - HTTP Request: PUT http://testserver/cards/decks/2 "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,441 - INFO - httpx - [_client.py:1025] - HTTP Request: DELETE http://testserver/cards/decks/2 "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,444 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,655 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : cards@example.com
+2026-09-08 17:47:08,657 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,667 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/ "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,675 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/1/review "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,680 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/1/review "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,897 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : learned@example.com
+2026-09-08 17:47:08,898 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,907 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,913 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,915 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,919 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-09-08 17:47:08,921 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/learned "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,134 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : stats@example.com
+2026-09-08 17:47:09,135 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,140 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,145 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/learned/toggle "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,152 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/stats "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,369 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : anki@example.com
+2026-09-08 17:47:09,370 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,375 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,380 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/ "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,430 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/decks/1/export-anki "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,439 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks/import-anki "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,449 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/?deck_id=2 "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,457 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks/import-anki "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,459 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/?deck_id=3 "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,670 - INFO - sensai.auth - [auth.py:38] - Nouvel utilisateur enregistré avec succès : ankiaudio@example.com
+2026-09-08 17:47:09,672 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,688 - INFO - httpx - [_client.py:1025] - HTTP Request: POST http://testserver/cards/decks/import-anki "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,691 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/?deck_id=1 "HTTP/1.1 200 OK"
+2026-09-08 17:47:09,701 - INFO - httpx - [_client.py:1025] - HTTP Request: GET http://testserver/cards/1/audio "HTTP/1.1 200 OK"

@@ -1,4 +1,5 @@
 import pytest
+import os
 from datetime import datetime, timedelta
 
 def get_auth_headers(client, email="user@example.com"):
@@ -218,3 +219,50 @@ def test_export_and_import_anki(client):
     tsv_cards_res = client.get(f"/cards/?deck_id={tsv_deck_id}", headers=headers)
     assert tsv_cards_res.status_code == 200
     assert len(tsv_cards_res.json()) == 2
+
+def test_import_anki_with_audio_and_play(client):
+    import zipfile, io, json, sqlite3, tempfile
+
+    headers = get_auth_headers(client, "ankiaudio@example.com")
+
+    # Créer une archive APKG en mémoire contenant une base collection.anki2 et un fichier audio
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = os.path.join(tmpdir, "collection.anki2")
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute("CREATE TABLE notes (id INTEGER PRIMARY KEY, guid TEXT, mid INTEGER, mod INTEGER, usn INTEGER, tags TEXT, flds TEXT, sfld TEXT, csum INTEGER, flags INTEGER, data TEXT);")
+        # Note avec champ contenant du son [sound:cat_voice.mp3]
+        c.execute("INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) VALUES (1, 'g1', 1, 1, -1, '', '猫\x1fねこ [sound:cat_voice.mp3]\x1fChat\x1fNote', '猫', 123, 0, '');")
+        conn.commit()
+        conn.close()
+
+        zip_buf = io.BytesIO()
+        with zipfile.ZipFile(zip_buf, 'w') as z:
+            z.write(db_path, "collection.anki2")
+            z.writestr("media", json.dumps({"0": "cat_voice.mp3"}))
+            z.writestr("0", b"FAKE_AUDIO_MP3_DATA_STREAM")
+        
+        apkg_bytes = zip_buf.getvalue()
+
+    # 1. Importer le paquet Anki avec audio
+    files = {
+        "file": ("deck_audio.apkg", apkg_bytes, "application/octet-stream")
+    }
+    res = client.post("/cards/decks/import-anki", files=files, data={"title": "Deck Audio Test"}, headers=headers)
+    assert res.status_code == 200
+    deck_id = res.json()["id"]
+
+    # 2. Récupérer la carte importée
+    cards_res = client.get(f"/cards/?deck_id={deck_id}", headers=headers)
+    assert cards_res.status_code == 200
+    cards = cards_res.json()
+    assert len(cards) == 1
+    card = cards[0]
+    assert card["text_source"] == "猫"
+    assert card["audio_path"] is not None
+
+    # 3. Tester la récupération du flux audio via l'endpoint dédié
+    audio_res = client.get(f"/cards/{card['id']}/audio", headers=headers)
+    assert audio_res.status_code == 200
+    assert audio_res.content == b"FAKE_AUDIO_MP3_DATA_STREAM"
+    assert audio_res.headers.get("content-type") == "audio/mpeg"

@@ -67,6 +67,7 @@ class Flashcard(Base):
     breakdown = Column(JSON, nullable=True)
     context_note = Column(String, nullable=True)
     image_crop_path = Column(String, nullable=True)
+    audio_path = Column(String, nullable=True)
 
     deck = relationship("Deck", back_populates="cards")
     review_stats = relationship("ReviewStats", back_populates="card", uselist=False, cascade="all, delete-orphan")

@@ -3,6 +3,7 @@ import {
   getDueFlashcards,
   submitCardReview,
   getAudioUrl,
+  getCardAudioUrl,
   getDecks,
   getFlashcards,
   renameDeck,
@@ -607,6 +608,26 @@ export default function Study() {
     }
   };
 
+  const playCardAudio = (card) => {
+    if (!card) return;
+    if (card.audio_path) {
+      const audioUrl = getCardAudioUrl(card.id);
+      const audio = new Audio(audioUrl);
+      audio.play().catch(() => {
+        if (card.text_source) {
+          const ttsUrl = getAudioUrl(card.text_source);
+          new Audio(ttsUrl).play();
+        }
+      });
+      return;
+    }
+    if (card.text_source) {
+      const url = getAudioUrl(card.text_source);
+      const audio = new Audio(url);
+      audio.play();
+    }
+  };
+
   const playAudio = (text) => {
     if (!text) return;
     const url = getAudioUrl(text);
@@ -804,13 +825,20 @@ export default function Study() {
                         {cards[currentIndex].text_source}
                       </h2>
                       <button
-                        onClick={() => playAudio(cards[currentIndex].text_source)}
+                        onClick={() => playCardAudio(cards[currentIndex])}
                         style={styles.btnAudio}
-                        title="Écouter la prononciation"
+                        title={cards[currentIndex].audio_path ? "Écouter l'audio natif Anki" : "Écouter la prononciation"}
                       >
                         🔊
                       </button>
                     </div>
+                    {cards[currentIndex].audio_path && (
+                      <div style={{ marginTop: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', color: '#60a5fa', background: 'rgba(59, 130, 246, 0.15)', padding: '3px 10px', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                          🎵 Audio natif
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
@@ -822,9 +850,9 @@ export default function Study() {
                         {cards[currentIndex].romaji}
                       </span>
                       <button
-                        onClick={() => playAudio(cards[currentIndex].text_source)}
+                        onClick={() => playCardAudio(cards[currentIndex])}
                         style={{ ...styles.btnAudio, fontSize: '24px' }}
-                        title="Écouter la prononciation"
+                        title={cards[currentIndex].audio_path ? "Écouter l'audio natif Anki" : "Écouter la prononciation"}
                       >
                         🔊
                       </button>
