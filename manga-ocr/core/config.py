@@ -18,7 +18,9 @@ MAX_TOKENS = int(os.getenv("GROQ_MAX_TOKENS", "800"))
 # --- CONFIGURATION OPENROUTER ---
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "minimax/minimax-m3")
-OPENROUTER_MAX_TOKENS = int(os.getenv("OPENROUTER_MAX_TOKENS", "2500"))
+OPENROUTER_MAX_TOKENS = int(os.getenv("OPENROUTER_MAX_TOKENS", "1500"))
+OPENROUTER_TIMEOUT = float(os.getenv("OPENROUTER_TIMEOUT", "12.0"))
+
 
 # Configuration des voix TTS par défaut
 DEFAULT_VOICE = "ja-JP-NanamiNeural"

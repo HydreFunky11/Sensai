@@ -7,6 +7,7 @@ from core.config import (
     OPENROUTER_API_KEY,
     OPENROUTER_MODEL,
     OPENROUTER_MAX_TOKENS,
+    OPENROUTER_TIMEOUT,
     GROQ_API_KEY,
     MODEL_NAME,
     MAX_TOKENS,
@@ -32,11 +33,22 @@ class LLMService:
         """
 
     def _normalize_json_payload(self, raw_text: str, text_source: str) -> dict:
+        if not raw_text:
+            raise ValueError("Texte de réponse vide reçu du modèle.")
+
         content = raw_text.strip()
-        # Nettoyage des balises Markdown (ex: ```json ... ```)
-        if content.startswith("```"):
-            content = re.sub(r"^```(?:json)?\s*", "", content)
-            content = re.sub(r"\s*```$", "", content)
+        # 1. Nettoyage des balises Markdown (ex: ```json ... ``` ou ``` ... ```)
+        if "```" in content:
+            match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
+            if match:
+                content = match.group(1).strip()
+
+        # 2. Extraction ciblée du premier objet JSON complet si texte parasite
+        if not (content.startswith("{") and content.endswith("}")):
+            match = re.search(r"(\{[\s\S]*\})", content)
+            if match:
+                content = match.group(1).strip()
+
         data = json.loads(content)
 
         # Normaliser les éléments de breakdown pour assurer la présence de 'romanji' et 'romaji'
@@ -63,6 +75,7 @@ class LLMService:
             "HTTP-Referer": "http://127.0.0.1:5173",
             "X-Title": "SensAI",
         }
+        # Optimisation haute performance pour la réactivité du lecteur
         payload = {
             "model": OPENROUTER_MODEL,
             "messages": [
@@ -72,9 +85,11 @@ class LLMService:
             "max_tokens": OPENROUTER_MAX_TOKENS,
             "temperature": 0.1,
             "response_format": {"type": "json_object"},
+            "include_reasoning": False,
+            "provider": {"sort": "latency"},
         }
 
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=OPENROUTER_TIMEOUT) as client:
             resp = client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
@@ -84,11 +99,20 @@ class LLMService:
             data = resp.json()
 
         choice = data["choices"][0]
-        content = choice["message"].get("content")
+        message = choice.get("message", {})
+        # Certains fournisseurs renvoient le résultat dans 'content', d'autres dans 'reasoning'
+        content = message.get("content") or message.get("reasoning")
+        if not content and "reasoning_details" in message:
+            for detail in message.get("reasoning_details", []):
+                if isinstance(detail, dict) and detail.get("text"):
+                    content = detail["text"]
+                    break
+
         if not content:
             raise ValueError(f"Réponse vide reçue d'OpenRouter : {data}")
 
         return self._normalize_json_payload(content, text_source)
+
 
     def _call_groq(self, user_prompt: str, text_source: str) -> dict:
         if not self.groq_client:

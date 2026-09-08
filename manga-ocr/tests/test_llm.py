@@ -64,6 +64,44 @@ def test_openrouter_success():
         assert res["original"] == "ありがとう"
 
 
+def test_openrouter_extracts_from_reasoning_when_content_is_none():
+    service = LLMService()
+    mock_response_data = {
+        "choices": [
+            {
+                "message": {
+                    "content": None,
+                    "reasoning": json.dumps({
+                        "original": "逃げちゃダメだ",
+                        "romaji": "nigecha dame da",
+                        "translation": "Il ne faut pas fuir",
+                        "breakdown": [
+                            {"word": "逃げ", "romaji": "nige", "type": "Verbe", "meaning": "Fuir"}
+                        ],
+                        "context_note": "Mantra de Shinji"
+                    })
+                }
+            }
+        ]
+    }
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = mock_response_data
+    mock_resp.raise_for_status.return_value = None
+
+    with patch("httpx.Client") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client.__enter__.return_value = mock_client
+        mock_client.post.return_value = mock_resp
+        mock_client_class.return_value = mock_client
+
+        res = service._call_openrouter("prompt", "逃げちゃダメだ")
+        assert res["translation"] == "Il ne faut pas fuir"
+        assert res["original"] == "逃げちゃダメだ"
+        assert res["breakdown"][0]["romanji"] == "nige"
+
+
+
 def test_fallback_to_groq_when_openrouter_fails():
     service = LLMService()
     service.groq_client = MagicMock()

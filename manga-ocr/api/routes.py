@@ -12,10 +12,12 @@ from services.tts_service import tts_service
 from services.detection_service import detection_service
 from core.config import DEFAULT_VOICE
 from api.deps import get_current_user
+from starlette.concurrency import run_in_threadpool
 from core.security import validate_uploaded_image
 from core.rate_limiter import limiter_strict, limiter_reader
 
 router = APIRouter()
+
 
 def is_valid_analysis_cache(data) -> bool:
     if not isinstance(data, dict):
@@ -67,7 +69,7 @@ async def detect_bubbles(
             return {"boxes": cached.boxes}
             
         # Sinon, lancer l'inférence YOLO
-        boxes = detection_service.detect_bubbles(image_data)
+        boxes = await run_in_threadpool(detection_service.detect_bubbles, image_data)
         
         # Sauvegarder dans le cache
         try:
@@ -134,7 +136,7 @@ async def analyze_manga(
             
         # 2. OCR (si pas de cache Niveau 1)
         try:
-            text_source = ocr_service.recognize_text(image_data, lang=lang)
+            text_source = await run_in_threadpool(ocr_service.recognize_text, image_data, lang=lang)
             print(f"👁️ Lu ({lang}) : {text_source}")
         except Exception as e:
             return {"error": "Problème d'analyse OCR", "details": str(e)}
@@ -204,7 +206,8 @@ async def analyze_manga(
             return analysis
 
         # 4. Inférence LLM (si aucun cache)
-        analysis = llm_service.analyze_text(text_source, lang=lang)
+        analysis = await run_in_threadpool(llm_service.analyze_text, text_source, lang=lang)
+
         
         # Enregistrer l'utilisation de l'API LLM pour le compte gratuit
         if not current_user.is_premium:
