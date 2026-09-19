@@ -13,7 +13,10 @@ import { toast } from 'react-hot-toast';
 import './Music.css';
 
 export default function Music() {
-  const [query, setQuery] = useState('');
+  const [searchMode, setSearchMode] = useState('manual'); // 'manual' (option principale) | 'spotify'
+  const [songTitle, setSongTitle] = useState('');
+  const [songArtist, setSongArtist] = useState('');
+  const [spotifyUrl, setSpotifyUrl] = useState('');
   const [customLyrics, setCustomLyrics] = useState('');
   const [showCustomLyrics, setShowCustomLyrics] = useState(false);
   const [presets, setPresets] = useState([]);
@@ -135,11 +138,34 @@ export default function Music() {
     }
   };
 
-  // Traitement d'un lien ou d'une recherche
-  const handleSearch = async (overrideQuery = null) => {
-    const targetQuery = overrideQuery !== null ? overrideQuery : query;
-    if (!targetQuery.trim() && !customLyrics.trim()) {
-      toast.error("Veuillez coller un lien Spotify ou saisir un titre de morceau.");
+  // Traitement d'une recherche (Titre & Artiste ou Lien Spotify)
+  const handleSearch = async (overrideData = null) => {
+    let targetTitle = songTitle.trim();
+    let targetArtist = songArtist.trim();
+    let targetUrl = spotifyUrl.trim();
+
+    if (overrideData) {
+      if (typeof overrideData === 'object') {
+        targetTitle = overrideData.title || "";
+        targetArtist = overrideData.artist || "";
+        targetUrl = overrideData.spotify_url || "";
+      } else if (typeof overrideData === 'string') {
+        if (overrideData.includes("spotify.com") || overrideData.startsWith("spotify:track:")) {
+          targetUrl = overrideData;
+        } else {
+          targetTitle = overrideData;
+        }
+      }
+    }
+
+    // Auto-détection : si l'utilisateur a collé un lien Spotify dans le champ Titre
+    if (targetTitle.includes("spotify.com") || targetTitle.startsWith("spotify:track:")) {
+      targetUrl = targetTitle;
+      targetTitle = "";
+    }
+
+    if (!targetUrl && !targetTitle && !customLyrics.trim()) {
+      toast.error("Veuillez saisir un titre de chanson ou coller un lien Spotify.");
       return;
     }
 
@@ -149,31 +175,31 @@ export default function Music() {
     setKaraokeTime(0);
 
     try {
-      // 1. Résolution du morceau Spotify
-      const isSpotifyUrl = targetQuery.includes("spotify.com") || targetQuery.startsWith("spotify:track:");
+      // 1. Résolution du morceau (via Titre/Artiste ou Lien Spotify)
       let trackInfo = null;
-
       try {
-        trackInfo = await resolveSpotifyTrack(
-          isSpotifyUrl ? targetQuery : "",
-          isSpotifyUrl ? "" : targetQuery
-        );
+        trackInfo = await resolveSpotifyTrack({
+          spotify_url: targetUrl,
+          title: targetTitle,
+          artist: targetArtist
+        });
         setTrack(trackInfo);
       } catch (e) {
-        console.warn("Échec résolution Spotify, poursuite avec titre brut:", e);
+        console.warn("Échec résolution Spotify, utilisation des informations saisies:", e);
         trackInfo = {
-          title: targetQuery,
-          artist: "",
+          title: targetTitle || "Morceau",
+          artist: targetArtist || "",
           embed_url: null
         };
         setTrack(trackInfo);
       }
 
       // 2. Récupération et analyse linguistique des paroles
-      const titleToAnalyze = trackInfo?.title || targetQuery;
+      const titleToAnalyze = trackInfo?.title || targetTitle;
+      const artistToAnalyze = trackInfo?.artist || targetArtist;
       const lyrics = await getMusicLyrics(
         titleToAnalyze,
-        trackInfo?.artist || "",
+        artistToAnalyze,
         trackInfo?.track_id || null,
         customLyrics
       );
@@ -191,9 +217,11 @@ export default function Music() {
     }
   };
 
-  // Sélection d'un preset
+  // Sélection d'un morceau suggéré
   const handleSelectPreset = (preset) => {
-    setQuery(preset.spotify_url || `${preset.artist} - ${preset.title}`);
+    setSongTitle(preset.title);
+    setSongArtist(preset.artist);
+    setSpotifyUrl(preset.spotify_url);
     setTrack({
       track_id: preset.track_id,
       title: preset.title,
@@ -201,7 +229,11 @@ export default function Music() {
       thumbnail: preset.thumbnail,
       embed_url: preset.embed_url
     });
-    handleSearch(preset.spotify_url || `${preset.artist} - ${preset.title}`);
+    handleSearch({
+      title: preset.title,
+      artist: preset.artist,
+      spotify_url: preset.spotify_url
+    });
   };
 
   // Saut de ligne interactif (au clic sur n'importe quel vers)
@@ -293,23 +325,77 @@ export default function Music() {
             <span role="img" aria-label="musique">🎵</span> SensAI Music & Karaoké
           </h1>
           <p className="music-hero-subtitle">
-            Collez un lien Spotify pour écouter le morceau, afficher les paroles complètes en kanji et romaji,
-            suivre le karaoké synchronisé et mémoriser le vocabulaire japonais dans vos fiches Anki.
+            Recherchez une chanson par son titre et artiste, ou collez un lien Spotify pour écouter le morceau,
+            afficher les paroles officielles synchronisées en kanji et romaji et mémoriser le vocabulaire dans vos fiches Anki.
           </p>
         </section>
 
         {/* Search & Input Card */}
         <section className="music-input-card" aria-label="Recherche et saisie musicale">
+          {/* Onglets de sélection du mode de recherche */}
+          <div className="music-search-modes" role="tablist" aria-label="Modes de recherche">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={searchMode === 'manual'}
+              className={`music-mode-tab ${searchMode === 'manual' ? 'active' : ''}`}
+              onClick={() => setSearchMode('manual')}
+            >
+              ✍️ Titre & Artiste (Option Principale)
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={searchMode === 'spotify'}
+              className={`music-mode-tab ${searchMode === 'spotify' ? 'active' : ''}`}
+              onClick={() => setSearchMode('spotify')}
+            >
+              🔗 Lien Spotify
+            </button>
+            <button
+              type="button"
+              className={`music-mode-tab ${showCustomLyrics ? 'active' : ''}`}
+              onClick={() => setShowCustomLyrics(!showCustomLyrics)}
+              aria-label="Afficher ou masquer la zone de paroles personnalisées"
+            >
+              {showCustomLyrics ? '▲ Masquer mes paroles' : '📝 Coller mes paroles'}
+            </button>
+          </div>
+
           <div className="music-search-bar">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Collez un lien Spotify (ex: https://open.spotify.com/track/...) ou un titre (ex: YOASOBI - Idol)"
-              className="music-input"
-              aria-label="Lien Spotify ou nom du morceau"
-            />
+            {searchMode === 'manual' ? (
+              <div className="music-manual-fields">
+                <input
+                  type="text"
+                  value={songTitle}
+                  onChange={(e) => setSongTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Nom de la musique (ex: KIRA, Idol, Gurenge...)"
+                  className="music-input"
+                  aria-label="Titre de la chanson"
+                />
+                <input
+                  type="text"
+                  value={songArtist}
+                  onChange={(e) => setSongArtist(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Nom de l'artiste (ex: Ado, YOASOBI, LiSA...)"
+                  className="music-input"
+                  aria-label="Nom de l'artiste"
+                />
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={spotifyUrl}
+                onChange={(e) => setSpotifyUrl(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Collez un lien Spotify (ex: https://open.spotify.com/track/...)"
+                className="music-input"
+                aria-label="Lien Spotify"
+              />
+            )}
+
             <button
               onClick={() => handleSearch()}
               disabled={loading}
@@ -317,13 +403,6 @@ export default function Music() {
               aria-label="Analyser les paroles de la chanson"
             >
               {loading ? '⏳ Analyse...' : '✨ Analyser Paroles'}
-            </button>
-            <button
-              onClick={() => setShowCustomLyrics(!showCustomLyrics)}
-              className="music-custom-toggle-btn"
-              aria-label="Afficher ou masquer la zone de paroles personnalisées"
-            >
-              {showCustomLyrics ? '▲ Masquer texte' : '📝 Coller mes paroles'}
             </button>
           </div>
 
@@ -384,8 +463,23 @@ export default function Music() {
                   />
                 ) : (
                   <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🎧</div>
-                    <strong>{lyricsData.title}</strong> {lyricsData.artist && `— ${lyricsData.artist}`}
+                    <div style={{ fontSize: '2.4rem', marginBottom: '8px' }}>🎧</div>
+                    <strong style={{ fontSize: '1.2rem', color: 'white', display: 'block' }}>
+                      {lyricsData.title}
+                    </strong>
+                    {lyricsData.artist && (
+                      <span style={{ color: '#1db954', fontWeight: 600, display: 'block', marginTop: '4px' }}>
+                        {lyricsData.artist}
+                      </span>
+                    )}
+                    <a
+                      href={`https://open.spotify.com/search/${encodeURIComponent((lyricsData.artist || '') + ' ' + lyricsData.title)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="music-spotify-link-btn"
+                    >
+                      Écouter sur Spotify ↗
+                    </a>
                   </div>
                 )}
               </div>

@@ -68,12 +68,19 @@ describe('Page SensAI Music (Spotify & Karaoké)', () => {
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
   });
 
-  it('devrait afficher la barre de recherche et les morceaux suggérés', async () => {
+  it('devrait afficher la saisie manuelle Titre/Artiste par défaut et permettre de basculer vers Lien Spotify', async () => {
     render(<Music />);
 
     expect(screen.getByText(/SensAI Music & Karaoké/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Collez un lien Spotify/i)).toBeInTheDocument();
+    // Option principale : Titre & Artiste
+    expect(screen.getByPlaceholderText(/Nom de la musique/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Nom de l'artiste/i)).toBeInTheDocument();
     expect(screen.getByText('✨ Analyser Paroles')).toBeInTheDocument();
+
+    // Bascule vers Lien Spotify
+    const spotifyTab = screen.getByRole('tab', { name: /Lien Spotify/i });
+    fireEvent.click(spotifyTab);
+    expect(screen.getByPlaceholderText(/Collez un lien Spotify/i)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(getMusicPresets).toHaveBeenCalled();

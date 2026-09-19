@@ -526,19 +526,31 @@ export async function getMusicPresets() {
   return response.json();
 }
 
-export async function resolveSpotifyTrack(spotifyUrl = "", query = "") {
+export async function resolveSpotifyTrack(spotifyUrlOrOptions = "", query = "") {
+  let bodyPayload = {};
+  if (typeof spotifyUrlOrOptions === "object" && spotifyUrlOrOptions !== null) {
+    bodyPayload = {
+      spotify_url: spotifyUrlOrOptions.spotify_url || spotifyUrlOrOptions.spotifyUrl || "",
+      query: spotifyUrlOrOptions.query || "",
+      title: spotifyUrlOrOptions.title || "",
+      artist: spotifyUrlOrOptions.artist || ""
+    };
+  } else {
+    bodyPayload = { spotify_url: spotifyUrlOrOptions, query };
+  }
+
   const response = await fetch(`${BASE_URL}/music/resolve`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
-    body: JSON.stringify({ spotify_url: spotifyUrl, query }),
+    body: JSON.stringify(bodyPayload),
   });
 
   if (!response.ok) {
     const errData = await response.json().catch(() => ({}));
-    throw new Error(errData.detail || "Impossible de résoudre le morceau Spotify");
+    throw new Error(errData.detail || "Impossible de résoudre le morceau");
   }
   return response.json();
 }

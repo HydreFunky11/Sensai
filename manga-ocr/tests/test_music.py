@@ -58,6 +58,27 @@ def test_resolve_spotify_track_with_oembed(client):
         assert data["artist"] == "YOASOBI"
         assert "embed/track/7vRri9DEyKtA1EIGjuz1L4" in data["embed_url"]
 
+def test_resolve_manual_title_and_artist(client):
+    response = client.post(
+        "/music/resolve",
+        json={"title": "KIRA", "artist": "Ado"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "KIRA"
+    assert data["artist"] == "Ado"
+
+def test_resolve_manual_preset_match(client):
+    response = client.post(
+        "/music/resolve",
+        json={"title": "Idol", "artist": "YOASOBI"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "Idol (アイドル)"
+    assert data["artist"] == "YOASOBI"
+    assert "embed_url" in data and data["embed_url"] is not None
+
 def test_resolve_query_text(client):
     response = client.post(
         "/music/resolve",
@@ -71,7 +92,7 @@ def test_resolve_query_text(client):
 def test_resolve_empty_fails(client):
     response = client.post(
         "/music/resolve",
-        json={"spotify_url": "", "query": ""}
+        json={"spotify_url": "", "query": "", "title": "", "artist": ""}
     )
     assert response.status_code == 400
 
