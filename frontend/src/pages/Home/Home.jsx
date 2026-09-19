@@ -416,6 +416,38 @@ export default function Home() {
             </button>
           </div>
 
+          {/* BANNIÈRE SENSAI MUSIC */}
+          <div 
+            style={{
+              ...styles.lensBanner,
+              background: 'linear-gradient(135deg, rgba(29, 185, 84, 0.15), rgba(6, 182, 212, 0.15))',
+              border: '1px solid rgba(29, 185, 84, 0.3)'
+            }} 
+            onClick={() => navigate('/music')}
+            role="region"
+            aria-label="Apprendre avec Spotify et les paroles japonaises"
+          >
+            <div style={styles.lensBannerLeft}>
+              <div style={styles.lensBannerIcon}>🎵</div>
+              <div>
+                <div style={styles.lensBannerHeading}>
+                  <h2 style={styles.lensBannerTitle}>SensAI Music — Spotify & Karaoké</h2>
+                  <span style={{ ...styles.lensBannerBadge, background: '#1db954' }}>Nouveau</span>
+                </div>
+                <p style={styles.lensBannerDesc}>
+                  Collez un lien Spotify pour écouter un opening ou hit J-Pop, lire les paroles synchronisées vers par vers et mémoriser le vocabulaire dans Anki.
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={(e) => { e.stopPropagation(); navigate('/music'); }}
+              style={{ ...styles.lensBannerBtn, background: 'linear-gradient(135deg, #1db954, #059669)', boxShadow: '0 4px 12px rgba(29, 185, 84, 0.3)' }}
+              aria-label="Ouvrir SensAI Music"
+            >
+              Écouter & Traduire ➔
+            </button>
+          </div>
+
           <div style={styles.toolbar}>
              <div style={styles.sortControls}>
                <label htmlFor="sort-select" style={{ color: '#bdc3c7', fontSize: '0.9rem' }}>Trier par :</label>

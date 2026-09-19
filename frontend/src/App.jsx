@@ -8,6 +8,7 @@ import Stats from './pages/Stats/Stats';
 import Profile from './pages/Profile/Profile';
 import Alphabets from './pages/Alphabets/Alphabets';
 import Lens from './pages/Lens/Lens';
+import Music from './pages/Music/Music';
 import ReaderApp from './ReaderApp'; // On renomme l'ancien App.jsx
 
 const ProtectedRoute = ({ children }) => {
@@ -77,6 +78,12 @@ function App() {
         <Route path="/lens" element={
           <ProtectedRoute>
             <Lens />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/music" element={
+          <ProtectedRoute>
+            <Music />
           </ProtectedRoute>
         } />
 
