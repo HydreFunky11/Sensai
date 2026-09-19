@@ -504,6 +504,62 @@ body, html {
   100% { transform: rotate(360deg); }
 }
 
+/* Scanning line animation during analysis (Shared / Lens & Viewer) */
+.lens-scanner-line,
+.viewer-scanner-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #06b6d4, #10b981, transparent);
+  box-shadow: 0 0 15px #06b6d4, 0 0 25px rgba(16, 185, 129, 0.4);
+  z-index: 30;
+  pointer-events: none;
+  animation: scanMove 2s ease-in-out infinite alternate;
+}
+
+@keyframes scanMove {
+  0% { top: 5%; }
+  100% { top: 95%; }
+}
+
+.lens-inline-spinner,
+.viewer-inline-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Badge d'analyse animé dans le viewer */
+.viewer-badge-analyzing {
+  position: absolute;
+  top: 15px;
+  right: 25px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25);
+  font-weight: 600;
+  animation: pulseBadge 1.2s infinite;
+  backdrop-filter: blur(8px);
+}
+
+@keyframes pulseBadge {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(0.98); }
+}
+
 /* ========================================== */
 /*   ACCESSIBILITÉ & KEYBOARD NAVIGATION (A11y) */
 /* ========================================== */

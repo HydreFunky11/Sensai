@@ -92,8 +92,19 @@ export function Viewer({ pageSrc, crop, setCrop, setCompletedCrop, imgRef, onAna
         </div>
       )}
 
+      {loading && (
+        <div 
+          role="status"
+          aria-live="polite"
+          className="viewer-badge-analyzing"
+        >
+          <span className="viewer-inline-spinner" aria-hidden="true" /> Traduction en cours...
+        </div>
+      )}
+
       <div className="viewer-container">
         <div style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', maxHeight: '100%' }}>
+          {loading && <div className="viewer-scanner-line" data-testid="viewer-scanner-line" />}
           <ReactCrop
             crop={crop}
             onChange={(c) => setCrop(c)}
@@ -177,7 +188,14 @@ export function Viewer({ pageSrc, crop, setCrop, setCompletedCrop, imgRef, onAna
           aria-label={loading ? "Analyse en cours" : "Lancer la traduction de la zone sélectionnée"}
           className="translate-btn-overlay"
         >
-          {loading ? "Analyse en cours..." : "Traduire la sélection"}
+          {loading ? (
+            <>
+              <span className="viewer-inline-spinner" style={{ marginRight: '8px' }} />
+              Analyse en cours...
+            </>
+          ) : (
+            "Traduire la sélection"
+          )}
         </button>
       )}
     </section>
