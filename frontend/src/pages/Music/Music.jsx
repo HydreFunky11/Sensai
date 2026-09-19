@@ -42,11 +42,149 @@ export default function Music() {
   const [savedWords, setSavedWords] = useState(new Set());
 
   const timerRef = useRef(null);
+  const spotifyControllerRef = useRef(null);
+  const embedContainerRef = useRef(null);
+  const lastSpotifyUpdateRef = useRef(0);
+
+  // Méthodes de commande du lecteur Spotify Embed
+  const playSpotify = (seekTime = null) => {
+    if (spotifyControllerRef.current) {
+      try {
+        if (typeof seekTime === 'number' && seekTime >= 0) {
+          spotifyControllerRef.current.seek(Math.floor(seekTime));
+        }
+        spotifyControllerRef.current.play();
+      } catch (err) {
+        console.warn("Erreur lecture Spotify :", err);
+      }
+    }
+  };
+
+  const pauseSpotify = () => {
+    if (spotifyControllerRef.current) {
+      try {
+        spotifyControllerRef.current.pause();
+      } catch (err) {
+        console.warn("Erreur pause Spotify :", err);
+      }
+    }
+  };
+
+  const seekSpotify = (timeInSec) => {
+    if (spotifyControllerRef.current) {
+      try {
+        spotifyControllerRef.current.seek(Math.floor(timeInSec));
+      } catch (err) {
+        console.warn("Erreur seek Spotify :", err);
+      }
+    }
+  };
 
   useEffect(() => {
     loadPresets();
     loadDecks();
+
+    return () => {
+      if (spotifyControllerRef.current) {
+        try {
+          spotifyControllerRef.current.destroy();
+        } catch (e) {}
+        spotifyControllerRef.current = null;
+      }
+    };
   }, []);
+
+  // Initialisation et gestion du contrôleur Spotify iFrame API
+  useEffect(() => {
+    if (!track?.track_id || !embedContainerRef.current) return;
+
+    let isMounted = true;
+
+    const onApiReady = (IFrameAPI) => {
+      if (!isMounted || !embedContainerRef.current) return;
+
+      const container = embedContainerRef.current;
+
+      // Si un contrôleur est déjà actif et que le conteneur a son iframe, charger la nouvelle piste
+      if (spotifyControllerRef.current && container.querySelector('iframe')) {
+        try {
+          spotifyControllerRef.current.loadUri(`spotify:track:${track.track_id}`);
+          return;
+        } catch (e) {
+          console.warn("Échec loadUri Spotify, réinitialisation du contrôleur :", e);
+        }
+      }
+
+      // Vider le conteneur et insérer un placeholder propre pour l'API Spotify
+      container.innerHTML = '';
+      const placeholder = document.createElement('div');
+      placeholder.id = `spotify-player-${Date.now()}`;
+      container.appendChild(placeholder);
+
+      const options = {
+        width: '100%',
+        height: 152,
+        uri: `spotify:track:${track.track_id}`,
+      };
+
+      try {
+        IFrameAPI.createController(placeholder, options, (controller) => {
+          if (!isMounted) {
+            try { controller.destroy(); } catch (e) {}
+            return;
+          }
+
+          spotifyControllerRef.current = controller;
+
+          controller.addListener('ready', () => {
+            console.log("Spotify EmbedController prêt pour :", track.title);
+          });
+
+          controller.addListener('playback_update', (e) => {
+            if (!e || !e.data) return;
+            const { position, isPaused, duration } = e.data;
+
+            if (typeof position === 'number') {
+              lastSpotifyUpdateRef.current = Date.now();
+              const timeSec = position / 1000;
+              setKaraokeTime(timeSec);
+
+              if (lyricsData?.lines?.length) {
+                const currentLine = lyricsData.lines.find(
+                  (l) => timeSec >= l.time && timeSec < l.time + (l.duration || 4.5)
+                );
+                if (currentLine) {
+                  setActiveLineId(currentLine.id);
+                }
+              }
+            }
+
+            if (typeof isPaused === 'boolean') {
+              if (isPaused && duration && position >= duration - 500) {
+                setIsKaraokePlaying(false);
+                setKaraokeTime(0);
+              } else {
+                setIsKaraokePlaying(!isPaused);
+              }
+            }
+          });
+        });
+      } catch (err) {
+        console.warn("Échec d'initialisation du Spotify Controller :", err);
+      }
+    };
+
+    if (window.SpotifyIframeApi) {
+      onApiReady(window.SpotifyIframeApi);
+    } else {
+      window.__spotifyIframeApiCallbacks = window.__spotifyIframeApiCallbacks || [];
+      window.__spotifyIframeApiCallbacks.push(onApiReady);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [track?.track_id, lyricsData]);
 
   async function loadPresets() {
     try {
@@ -81,10 +219,18 @@ export default function Music() {
     const totalDuration = lastLine.time + (lastLine.duration || 5);
 
     timerRef.current = setInterval(() => {
+      // Si Spotify est en cours de lecture et envoie des mises à jour actives (< 800ms),
+      // on laisse Spotify piloter directement le temps pour éviter tout décalage
+      const isSpotifyActive = Date.now() - lastSpotifyUpdateRef.current < 800;
+      if (isSpotifyActive) {
+        return;
+      }
+
       setKaraokeTime((prev) => {
         const nextTime = prev + 0.2 * playbackSpeed;
         if (nextTime >= totalDuration) {
           setIsKaraokePlaying(false);
+          pauseSpotify();
           return 0;
         }
 
@@ -173,6 +319,7 @@ export default function Music() {
     setLyricsData(null);
     setIsKaraokePlaying(false);
     setKaraokeTime(0);
+    pauseSpotify();
 
     try {
       // 1. Résolution du morceau (via Titre/Artiste ou Lien Spotify)
@@ -239,7 +386,12 @@ export default function Music() {
   // Saut de ligne interactif (au clic sur n'importe quel vers)
   const jumpToLine = (line) => {
     setActiveLineId(line.id);
-    setKaraokeTime(line.time || 0);
+    const targetTime = line.time || 0;
+    setKaraokeTime(targetTime);
+    seekSpotify(targetTime);
+    if (karaokeMode && isKaraokePlaying) {
+      playSpotify();
+    }
   };
 
   // Saut précédent / suivant en karaoké
@@ -450,17 +602,24 @@ export default function Music() {
             {/* Lecteur Spotify & Infos Linguistiques */}
             <div className="music-player-grid">
               <div className="music-spotify-widget">
-                {track?.embed_url ? (
-                  <iframe
-                    src={track.embed_url}
-                    width="100%"
-                    height="152"
-                    frameBorder="0"
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy"
-                    title={`Lecteur Spotify pour ${track.title}`}
-                    style={{ borderRadius: '12px', border: 'none', display: 'block' }}
-                  />
+                {track?.embed_url || track?.track_id ? (
+                  <div
+                    ref={embedContainerRef}
+                    className="music-spotify-embed-container"
+                    data-testid="spotify-embed-container"
+                    style={{ minHeight: '152px', borderRadius: '12px', overflow: 'hidden' }}
+                  >
+                    <iframe
+                      src={track.embed_url || `https://open.spotify.com/embed/track/${track.track_id}`}
+                      width="100%"
+                      height="152"
+                      frameBorder="0"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                      title={`Lecteur Spotify pour ${track.title}`}
+                      style={{ borderRadius: '12px', border: 'none', display: 'block' }}
+                    />
+                  </div>
                 ) : (
                   <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
                     <div style={{ fontSize: '2.4rem', marginBottom: '8px' }}>🎧</div>
@@ -513,8 +672,10 @@ export default function Music() {
                   setKaraokeMode(nextState);
                   if (nextState) {
                     setIsKaraokePlaying(true);
+                    playSpotify(karaokeTime > 0 ? karaokeTime : 0);
                   } else {
                     setIsKaraokePlaying(false);
+                    pauseSpotify();
                   }
                 }}
                 aria-pressed={karaokeMode}
@@ -605,7 +766,15 @@ export default function Music() {
                     </button>
 
                     <button
-                      onClick={() => setIsKaraokePlaying(!isKaraokePlaying)}
+                      onClick={() => {
+                        const nextPlaying = !isKaraokePlaying;
+                        setIsKaraokePlaying(nextPlaying);
+                        if (nextPlaying) {
+                          playSpotify(karaokeTime > 0 ? karaokeTime : null);
+                        } else {
+                          pauseSpotify();
+                        }
+                      }}
                       className="music-karaoke-btn music-karaoke-btn-primary"
                       aria-label={isKaraokePlaying ? "Pause karaoké" : "Lecture karaoké"}
                     >
@@ -657,6 +826,7 @@ export default function Music() {
                   onChange={(e) => {
                     const newTime = parseFloat(e.target.value);
                     setKaraokeTime(newTime);
+                    seekSpotify(newTime);
                     const line = lyricsData.lines.find(
                       (l) => newTime >= l.time && newTime < l.time + (l.duration || 4.5)
                     );

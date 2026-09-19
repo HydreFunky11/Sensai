@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SensIA - Reader</title>
+    <script>
+      window.__spotifyIframeApiCallbacks = window.__spotifyIframeApiCallbacks || [];
+      window.onSpotifyIframeApiReady = function (IFrameAPI) {
+        window.SpotifyIframeApi = IFrameAPI;
+        if (Array.isArray(window.__spotifyIframeApiCallbacks)) {
+          window.__spotifyIframeApiCallbacks.forEach(function (cb) {
+            try { cb(IFrameAPI); } catch (e) { console.error(e); }
+          });
+          window.__spotifyIframeApiCallbacks = [];
+        }
+      };
+    </script>
+    <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
   </head>
   <body>
     <div id="root"></div>
