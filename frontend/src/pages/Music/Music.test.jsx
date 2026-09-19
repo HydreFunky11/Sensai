@@ -161,6 +161,82 @@ describe('Page SensAI Music (Spotify & Karaoké)', () => {
     expect(screen.getByText(/Mode Karaoké Actif/i)).toBeInTheDocument();
   });
 
+  it('devrait synchroniser le lecteur Spotify et le karaoké via Spotify iFrame API', async () => {
+    let playbackUpdateCallback = null;
+    const mockController = {
+      play: vi.fn(),
+      pause: vi.fn(),
+      resume: vi.fn(),
+      seek: vi.fn(),
+      loadUri: vi.fn(),
+      destroy: vi.fn(),
+      addListener: vi.fn((event, cb) => {
+        if (event === 'playback_update') {
+          playbackUpdateCallback = cb;
+        }
+      }),
+    };
+
+    window.SpotifyIframeApi = {
+      createController: vi.fn((placeholder, options, cb) => {
+        cb(mockController);
+      }),
+    };
+
+    render(<Music />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/YOASOBI — Idol/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/YOASOBI — Idol/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Activer Mode Karaoké/i)).toBeInTheDocument();
+      expect(window.SpotifyIframeApi.createController).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ uri: 'spotify:track:7vRri9DEyKtA1EIGjuz1L4' }),
+        expect.any(Function)
+      );
+    });
+
+    // 1. Activer le mode karaoké lance la musique Spotify
+    const karaokeToggle = screen.getByText(/Activer Mode Karaoké/i);
+    fireEvent.click(karaokeToggle);
+
+    expect(screen.getByText(/Mode Karaoké Actif/i)).toBeInTheDocument();
+    expect(mockController.play).toHaveBeenCalled();
+
+    // 2. Mettre en pause le karaoké met en pause Spotify
+    const pauseBtn = screen.getByRole('button', { name: /Pause karaoké/i });
+    fireEvent.click(pauseBtn);
+    expect(mockController.pause).toHaveBeenCalled();
+
+    // 3. Relancer la lecture
+    const playBtn = screen.getByRole('button', { name: /Lecture karaoké/i });
+    fireEvent.click(playBtn);
+    expect(mockController.play).toHaveBeenCalledTimes(2);
+
+    // 4. Cliquer sur un vers appelle seek sur Spotify
+    const lineElement = screen.getByText('無敵の笑顔で荒らすメディア');
+    fireEvent.click(lineElement);
+    expect(mockController.seek).toHaveBeenCalledWith(0);
+
+    // 5. Un événement playback_update de Spotify met à jour le karaoké
+    expect(playbackUpdateCallback).toBeTruthy();
+    playbackUpdateCallback({
+      data: {
+        position: 2000,
+        isPaused: false,
+        duration: 200000,
+      }
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/0:02/i)).toBeInTheDocument();
+    });
+  });
+
   it('devrait afficher la zone de paroles personnalisées au clic', () => {
     render(<Music />);
 
