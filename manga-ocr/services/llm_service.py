@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import httpx
+import pykakasi
 from groq import Groq
 from core.config import (
     OPENROUTER_API_KEY,
@@ -14,6 +15,19 @@ from core.config import (
 )
 
 logger = logging.getLogger("sensai.llm")
+
+# Initialisation du convertisseur Romaji pykakasi
+_kakasi = pykakasi.kakasi()
+
+def to_romaji(text: str) -> str:
+    """Convertit du texte japonais en Romaji Hepburn propre."""
+    if not text:
+        return ""
+    try:
+        conv = _kakasi.convert(text)
+        return " ".join(" ".join([item["hepburn"] for item in conv if item.get("hepburn")]).split())
+    except Exception:
+        return text
 
 
 class LLMService:
@@ -180,98 +194,252 @@ class LLMService:
             "error": "Impossible d'obtenir une réponse de l'IA (OpenRouter & Groq indisponibles).",
         }
 
+    def _fetch_lrclib_lyrics(self, title: str, artist: str = "") -> dict:
+        """
+        Interroge l'API LRCLIB pour obtenir les paroles officielles et minutées (syncedLyrics).
+        """
+        clean_title = re.sub(r"\(.*?\)|\[.*?\]", "", title).strip()
+        clean_artist = re.sub(r"\(.*?\)|\[.*?\]", "", artist).strip()
+        headers = {"User-Agent": "SensAI-Music/1.0"}
+
+        # 1. Recherche avec titre et artiste nettoyés
+        if clean_title:
+            try:
+                params = {"track_name": clean_title}
+                if clean_artist:
+                    params["artist_name"] = clean_artist
+                with httpx.Client(timeout=6.0) as client:
+                    resp = client.get("https://lrclib.net/api/get", params=params, headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("syncedLyrics") or data.get("plainLyrics"):
+                            return data
+            except Exception as e:
+                logger.debug(f"LRCLIB essai 1 ({clean_title} - {clean_artist}) échec : {e}")
+
+        # 2. Recherche avec juste le titre si artiste spécifié non trouvé
+        if clean_title and clean_artist:
+            try:
+                with httpx.Client(timeout=6.0) as client:
+                    resp = client.get("https://lrclib.net/api/get", params={"track_name": clean_title}, headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("syncedLyrics") or data.get("plainLyrics"):
+                            return data
+            except Exception as e:
+                logger.debug(f"LRCLIB essai 2 ({clean_title}) échec : {e}")
+
+        # 3. Recherche avec le titre brut
+        if title != clean_title:
+            try:
+                params = {"track_name": title.strip()}
+                if artist:
+                    params["artist_name"] = artist.strip()
+                with httpx.Client(timeout=6.0) as client:
+                    resp = client.get("https://lrclib.net/api/get", params=params, headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("syncedLyrics") or data.get("plainLyrics"):
+                            return data
+            except Exception as e:
+                logger.debug(f"LRCLIB essai 3 ({title}) échec : {e}")
+
+        return {}
+
     def analyze_music_lyrics(self, title: str, artist: str = "", custom_lyrics: str = "") -> dict:
+        """
+        Extrait les paroles japonaises complètes (via LRCLIB ou saisie personnalisée),
+        génère la transcription Romaji via pykakasi, synchronise les timestamps
+        et traduit avec extraction du vocabulaire JLPT via LLM.
+        """
+        raw_lines = []
+        is_synced = False
+
+        # 1. Vérifier si des paroles personnalisées ont été fournies manuellement
+        if custom_lyrics and custom_lyrics.strip():
+            logger.info(f"📝 Utilisation des paroles personnalisées fournies pour '{title}'...")
+            for line_str in custom_lyrics.strip().split("\n"):
+                clean_l = line_str.strip()
+                if clean_l:
+                    raw_lines.append({"japanese": clean_l})
+        else:
+            # 2. Interroger LRCLIB pour les vraies paroles officielles
+            logger.info(f"🔎 Recherche des paroles officielles sur LRCLIB pour '{title}' ({artist})...")
+            lrclib_data = self._fetch_lrclib_lyrics(title, artist)
+            synced_lyrics = lrclib_data.get("syncedLyrics")
+            plain_lyrics = lrclib_data.get("plainLyrics")
+
+            if synced_lyrics and synced_lyrics.strip():
+                logger.info(f"✅ Paroles synchronisées trouvées sur LRCLIB pour '{title}' !")
+                is_synced = True
+                for line_str in synced_lyrics.strip().split("\n"):
+                    m = re.match(r"\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)", line_str.strip())
+                    if m and m.group(3).strip():
+                        t = round(int(m.group(1)) * 60 + float(m.group(2)), 2)
+                        raw_lines.append({"time": t, "japanese": m.group(3).strip()})
+            elif plain_lyrics and plain_lyrics.strip():
+                logger.info(f"✅ Paroles texte brut trouvées sur LRCLIB pour '{title}' !")
+                for line_str in plain_lyrics.strip().split("\n"):
+                    clean_l = line_str.strip()
+                    if clean_l:
+                        raw_lines.append({"japanese": clean_l})
+
+        # 3. Si nous avons des vers réels (de LRCLIB ou custom_lyrics)
+        if raw_lines:
+            current_time = 0.0
+            for i, line in enumerate(raw_lines):
+                line["id"] = i + 1
+                line["romaji"] = to_romaji(line["japanese"])
+                if is_synced:
+                    if i < len(raw_lines) - 1:
+                        diff = round(raw_lines[i + 1]["time"] - line["time"], 1)
+                        line["duration"] = min(max(2.5, diff), 6.5)
+                    else:
+                        line["duration"] = 4.0
+                else:
+                    line["time"] = round(current_time, 1)
+                    jp_len = len(line["japanese"])
+                    line["duration"] = round(max(3.2, min(7.5, jp_len * 0.28)), 1)
+                    current_time += line["duration"]
+
+            # Traduction et vocabulaire via LLM (Groq en priorité pour sa rapidité <1s et absence de dépassement)
+            lines_to_translate = raw_lines[:40]
+            lines_text = "\n".join([f"{l['id']}. {l['japanese']}" for l in lines_to_translate])
+
+            translate_prompt = f"""
+            Tu es un traducteur expert du japonais vers le français.
+            Traduis chaque vers de la chanson '{title}' ({artist}) en français fluide et fidèle, détermine le niveau linguistique JLPT global (N5 à N1), et relève 8 à 15 mots de vocabulaire clés.
+            
+            Format JSON STRICT attendu :
+            {{
+                "jlpt_level": "N3",
+                "translations": [
+                    "Traduction du vers 1",
+                    "Traduction du vers 2"
+                ],
+                "vocabulary": [
+                    {{
+                        "word": "Mot original",
+                        "romanji": "Transcription romaji",
+                        "meaning": "Signification en français",
+                        "type": "Classe grammaticale"
+                    }}
+                ]
+            }}
+
+            Vers à traduire :
+            {lines_text}
+            """
+
+            analysis_result = None
+            if GROQ_API_KEY:
+                try:
+                    logger.info("⚡ Traduction et vocabulaire par Groq...")
+                    analysis_result = self._call_groq(translate_prompt, title, max_tokens=850)
+                except Exception as e:
+                    logger.warning(f"⚠️ Échec Groq traduction : {e}")
+
+            if not analysis_result and OPENROUTER_API_KEY:
+                try:
+                    logger.info(f"⚡ Traduction et vocabulaire par OpenRouter ({OPENROUTER_MODEL})...")
+                    analysis_result = self._call_openrouter(translate_prompt, title, max_tokens=1500)
+                except Exception as e:
+                    logger.warning(f"⚠️ Échec OpenRouter traduction : {e}")
+
+            translations = []
+            vocabulary = []
+            jlpt_level = "N3"
+
+            if analysis_result and isinstance(analysis_result, dict):
+                translations = analysis_result.get("translations", [])
+                vocabulary = analysis_result.get("vocabulary", [])
+                jlpt_level = analysis_result.get("jlpt_level", "N3")
+
+            for i, line in enumerate(raw_lines):
+                if i < len(translations) and isinstance(translations[i], str) and translations[i].strip():
+                    line["translation"] = translations[i].strip()
+                else:
+                    line["translation"] = line["japanese"]
+
+            return {
+                "title": title,
+                "artist": artist,
+                "jlpt_level": jlpt_level,
+                "lines": raw_lines,
+                "vocabulary": vocabulary
+            }
+
+        # 4. Fallback LLM pur si ni LRCLIB ni custom_lyrics n'ont donné de résultats
+        logger.info(f"🤖 Recherche et génération LLM pour '{title}' ({artist})...")
         music_system_prompt = """
-        Tu es SensAI Music, une IA experte en linguistique japonaise et en transcription de paroles de musique.
-        Ta mission est de fournir les paroles japonaises complètes (ou d'analyser le texte fourni), leur transcription Romaji, leur traduction française poétique et fidèle, ainsi que le minutage précis pour le karaoké et le vocabulaire clé.
-
-        NE FOURNIS AUCUNE ANALYSE D'ANIME, HISTORIQUE OU INTERPRÉTATION SUPERFICIELLE. Concentre-toi strictement sur les paroles et le niveau linguistique JLPT.
-
+        Tu es SensAI Music, une IA experte en linguistique japonaise.
+        Fournis les paroles japonaises de la chanson, leur transcription Romaji, leur traduction française et le vocabulaire clé.
         Format JSON strict :
         {
-            "title": "Titre exact",
-            "artist": "Nom de l'artiste",
+            "title": "Titre",
+            "artist": "Artiste",
             "jlpt_level": "N3",
             "lines": [
                 {
                     "id": 1,
                     "time": 0.0,
                     "duration": 4.5,
-                    "japanese": "誰もが目を奪われていく",
-                    "romaji": "Daremo ga me wo ubawarete iku",
-                    "translation": "Tout le monde se fait captiver le regard"
+                    "japanese": "Vers japonais",
+                    "romaji": "Transcription romaji",
+                    "translation": "Traduction française"
                 }
             ],
             "vocabulary": [
                 {
-                    "word": "目を奪う",
-                    "romanji": "me wo ubau",
-                    "meaning": "capter le regard, éblouir",
-                    "type": "expression / verbe"
+                    "word": "Mot",
+                    "romanji": "romaji",
+                    "meaning": "sens",
+                    "type": "type"
                 }
             ]
         }
-        Règles d'extraction :
-        1. Transcris chaque vers dans 'lines' avec son timestamp 'time' en secondes progressif (0.0, 4.0, 8.5...) et 'duration' (en secondes).
-        2. Fournis un découpage complet et fluide (20 à 40 vers).
-        3. Dans 'vocabulary', regroupe 8 à 15 mots et tournures grammaticales clés à apprendre pour ce morceau.
-        4. Réponds STRICTEMENT avec l'objet JSON ci-dessus, sans aucun texte introductif.
         """
-
-        if custom_lyrics and custom_lyrics.strip():
-            user_prompt = f"""
-            Analyse et synchronise ces paroles pour la chanson '{title}' ({artist}) :
-            {custom_lyrics.strip()}
-            """
-        else:
-            user_prompt = f"""
-            Fournis et synchronise les paroles japonaises complètes de la chanson '{title}' par '{artist}'.
-            Chaque phrase ou vers doit former un élément individuel dans 'lines' avec son minutage approximatif (time en secondes).
-            """
-
+        user_prompt = f"Fournis et analyse les paroles japonaises de la chanson '{title}' par '{artist}'."
         data = None
-        if OPENROUTER_API_KEY:
-            try:
-                logger.info(f"🎵 Analyse Paroles Musique via OpenRouter ({OPENROUTER_MODEL})...")
-                data = self._call_openrouter(user_prompt, title, system_prompt=music_system_prompt, max_tokens=3500)
-            except Exception as e:
-                logger.warning(f"⚠️ Échec OpenRouter musique : {e}. Bascule Groq...")
 
-        if not data or "lines" not in data:
-            if GROQ_API_KEY:
-                try:
-                    logger.info(f"🔄 Fallback analyse Paroles Musique via Groq ({MODEL_NAME})...")
-                    data = self._call_groq(user_prompt, title, system_prompt=music_system_prompt, max_tokens=3500)
-                except Exception as e:
-                    logger.error(f"❌ Échec fallback Groq musique : {e}")
+        if GROQ_API_KEY:
+            try:
+                data = self._call_groq(user_prompt, title, system_prompt=music_system_prompt, max_tokens=850)
+            except Exception as e:
+                logger.warning(f"⚠️ Échec Groq fallback : {e}")
+
+        if not data and OPENROUTER_API_KEY:
+            try:
+                data = self._call_openrouter(user_prompt, title, system_prompt=music_system_prompt, max_tokens=1500)
+            except Exception as e:
+                logger.warning(f"⚠️ Échec OpenRouter fallback : {e}")
 
         if not data or "lines" not in data or len(data["lines"]) == 0:
-            # Fallback gracieux si échec
             data = {
                 "title": title,
                 "artist": artist,
-                "jlpt_level": "N4",
+                "jlpt_level": "N3",
                 "lines": [
                     {
                         "id": 1,
                         "time": 0.0,
                         "duration": 4.5,
                         "japanese": f"{title} - {artist}",
-                        "romaji": "Nihon no ongaku",
-                        "translation": f"Paroles de {title} par {artist}"
+                        "romaji": to_romaji(title),
+                        "translation": f"Chanson {title} de {artist}"
                     }
                 ],
                 "vocabulary": []
             }
 
-        # Post-traitement : s'assurer que chaque ligne dispose d'un timestamp 'time' et 'duration' cohérents
         current_time = 0.0
         for i, line in enumerate(data.get("lines", [])):
             if not isinstance(line, dict):
                 continue
             line["id"] = i + 1
+            if not line.get("romaji"):
+                line["romaji"] = to_romaji(line.get("japanese", ""))
             if "duration" not in line or not line["duration"]:
-                # Durée calculée intelligemment selon la longueur du vers japonais (min 3.5s)
                 jp_len = len(line.get("japanese", ""))
                 line["duration"] = round(max(3.2, min(7.5, jp_len * 0.28)), 1)
             if "time" not in line or line.get("time") is None:

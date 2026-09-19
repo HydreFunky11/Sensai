@@ -15,6 +15,8 @@ router = APIRouter(prefix="/music", tags=["music"])
 class MusicResolveRequest(BaseModel):
     spotify_url: Optional[str] = None
     query: Optional[str] = None
+    title: Optional[str] = None
+    artist: Optional[str] = None
 
 class MusicResolveResponse(BaseModel):
     track_id: Optional[str] = None
@@ -127,48 +129,100 @@ async def get_presets():
 @router.post("/resolve", response_model=MusicResolveResponse, dependencies=[Depends(limiter_reader)])
 async def resolve_track(req: MusicResolveRequest):
     """
-    Résout un lien ou identifiant Spotify via l'API oEmbed publique de Spotify.
-    Renvoie le titre, artiste, miniature et l'URL iframe d'écoute intégrée.
+    Résout un morceau soit par Titre & Artiste (option principale),
+    soit via un lien / identifiant Spotify (option secondaire).
     """
+    # 1. Option principale : recherche manuelle par Titre et Artiste
+    if req.title and req.title.strip():
+        req_title = req.title.strip()
+        req_artist = (req.artist or "").strip()
+
+        # Vérifier si cela correspond à un preset connu
+        for p in PRESET_TRACKS:
+            if (req_title.lower() in p["title"].lower() or p["title"].lower() in req_title.lower()):
+                if not req_artist or req_artist.lower() in p["artist"].lower() or p["artist"].lower() in req_artist.lower():
+                    return MusicResolveResponse(
+                        track_id=p["track_id"],
+                        title=p["title"],
+                        artist=p["artist"],
+                        thumbnail=p["thumbnail"],
+                        embed_url=p["embed_url"]
+                    )
+
+        return MusicResolveResponse(
+            track_id=None,
+            title=req_title,
+            artist=req_artist,
+            thumbnail=None,
+            embed_url=None
+        )
+
+    # 2. Option secondaire : résolution par lien ou ID Spotify
     track_id = None
-    if req.spotify_url:
-        track_id = extract_spotify_track_id(req.spotify_url)
+    target_url = req.spotify_url or req.query
+
+    if target_url:
+        track_id = extract_spotify_track_id(target_url)
 
     if track_id:
-        # Appel à Spotify oEmbed officiel
+        title = None
+        artist = ""
+        thumbnail = None
+        embed_url = f"https://open.spotify.com/embed/track/{track_id}"
+
+        # Étape A : Spotify oEmbed
         oembed_url = f"https://open.spotify.com/oembed?url=https://open.spotify.com/track/{track_id}"
         try:
             async with httpx.AsyncClient(timeout=6.0) as client:
                 resp = await client.get(oembed_url)
                 if resp.status_code == 200:
                     data = resp.json()
-                    title = data.get("title", "Morceau Spotify")
-                    artist = data.get("author_name", "")
+                    title = data.get("title")
+                    artist = data.get("author_name") or ""
                     thumbnail = data.get("thumbnail_url")
-                    embed_url = f"https://open.spotify.com/embed/track/{track_id}"
-                    return MusicResolveResponse(
-                        track_id=track_id,
-                        title=title,
-                        artist=artist,
-                        thumbnail=thumbnail,
-                        embed_url=embed_url
-                    )
         except Exception as e:
             logger.warning(f"Impossible de contacter Spotify oEmbed: {e}")
 
-        # Fallback avec l'ID valide
+        # Étape B : Si l'artiste est vide (fréquent sur l'oEmbed Spotify pour les morceaux), scraper la page Spotify
+        if not artist or not title or title == "Morceau Spotify":
+            try:
+                page_url = f"https://open.spotify.com/track/{track_id}"
+                headers = {
+                    "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+                }
+                async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
+                    page_resp = await client.get(page_url, headers=headers)
+                    if page_resp.status_code == 200:
+                        html = page_resp.text
+                        # Pattern 1: <title>KIRA - song and lyrics by Ado | Spotify</title>
+                        title_match = re.search(r"<title>(.*?)\s*-\s*song\s+(?:and\s+lyrics\s+)?by\s+(.*?)\s*\|\s*Spotify</title>", html, re.IGNORECASE)
+                        if title_match:
+                            if not title or title == "Morceau Spotify":
+                                title = title_match.group(1).strip()
+                            if not artist:
+                                artist = title_match.group(2).strip()
+
+                        # Pattern 2: og:description content="Ado · KIRA · Song · 2026"
+                        if not artist:
+                            desc_match = re.search(r'<meta\s+(?:property|name)=["\']og:description["\']\s+content=["\']([^·"\']+)\s*·\s*([^·"\']+)\s*·', html, re.IGNORECASE)
+                            if desc_match:
+                                artist = desc_match.group(1).strip()
+                                if not title or title == "Morceau Spotify":
+                                    title = desc_match.group(2).strip()
+            except Exception as e:
+                logger.warning(f"Scraping de secours métadonnées Spotify échoué: {e}")
+
         return MusicResolveResponse(
             track_id=track_id,
-            title=f"Spotify Track ({track_id[:8]}...)",
-            artist="",
-            thumbnail=None,
-            embed_url=f"https://open.spotify.com/embed/track/{track_id}"
+            title=title or f"Spotify Track ({track_id[:8]}...)",
+            artist=artist or "",
+            thumbnail=thumbnail,
+            embed_url=embed_url
         )
 
-    # Si pas d'URL Spotify mais une recherche textuelle (ex: "YOASOBI Idol")
+    # 3. Recherche textuelle libre (ex: "YOASOBI - Idol")
     if req.query and req.query.strip():
         q = req.query.strip()
-        # Séparer artist et titre si séparés par un tiret
         parts = [p.strip() for p in q.split("-", 1)]
         if len(parts) == 2:
             return MusicResolveResponse(
@@ -188,7 +242,7 @@ async def resolve_track(req: MusicResolveRequest):
 
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Veuillez fournir un lien Spotify valide ou un titre de chanson."
+        detail="Veuillez fournir un titre et un artiste, ou un lien Spotify."
     )
 
 @router.post("/lyrics", response_model=MusicLyricsResponse, dependencies=[Depends(limiter_reader)])

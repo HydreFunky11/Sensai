@@ -55,10 +55,58 @@
   margin-bottom: 24px;
 }
 
+/* Search & Mode Tabs */
+.music-search-modes {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.music-mode-tab {
+  background: #181820;
+  border: 1px solid #2e2e3a;
+  color: #94a3b8;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.music-mode-tab:hover {
+  color: white;
+  border-color: #4a4a5a;
+  background: #20202a;
+}
+
+.music-mode-tab.active {
+  background: rgba(29, 185, 84, 0.15);
+  border-color: #1db954;
+  color: #1db954;
+}
+
 .music-search-bar {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.music-manual-fields {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-width: 280px;
+  flex-wrap: wrap;
+}
+
+.music-manual-fields .music-input {
+  flex: 1;
+  min-width: 200px;
 }
 
 .music-input {
@@ -204,6 +252,27 @@
   overflow: hidden;
   border: 1px solid #23232b;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.music-spotify-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1db954;
+  color: white;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.music-spotify-link-btn:hover {
+  background: #1ed760;
+  transform: translateY(-1px);
+  color: white;
 }
 
 .music-song-info-card {
