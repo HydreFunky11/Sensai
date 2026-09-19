@@ -29,7 +29,7 @@ jobs:
       - name: Install Frontend Dependencies
         run: |
           cd frontend
-          npm install
+          npm ci || npm install --legacy-peer-deps
 
       - name: Run Frontend Unit Tests
         run: |
