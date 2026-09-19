@@ -157,3 +157,4 @@ uvicorn==0.40.0
 yarl==1.22.0
 genanki==0.13.1
 pykakasi>=2.3.0
+spotifyscraper>=3.9.2

@@ -67,6 +67,8 @@ def test_resolve_manual_title_and_artist(client):
     data = response.json()
     assert data["title"] == "KIRA"
     assert data["artist"] == "Ado"
+    assert "embed_url" in data and data["embed_url"] is not None
+    assert "7FTTLL9jM3wcpgeCAJU9L6" in data["embed_url"]
 
 def test_resolve_manual_preset_match(client):
     response = client.post(
