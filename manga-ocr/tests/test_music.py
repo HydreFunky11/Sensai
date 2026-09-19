@@ -114,10 +114,14 @@ def test_get_lyrics_and_analysis(client):
         data = response.json()
         assert data["title"] == "Gurenge"
         assert data["artist"] == "LiSA"
+        assert data["jlpt_level"] == "N3"
+        assert "anime_context" not in data or data.get("anime_context") is None
         assert len(data["lines"]) == 1
         line = data["lines"][0]
         assert line["japanese"] == "強くなれる理由を知った"
         assert line["romaji"] == "Tsuyoku nareru riyuu wo shitta"
+        assert line["time"] == 0.0
+        assert line["duration"] == 4.0
         assert len(line["vocabulary"]) == 2
 
 def test_get_lyrics_empty_title_fails(client):

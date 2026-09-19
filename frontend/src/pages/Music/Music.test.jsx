@@ -38,18 +38,19 @@ vi.mock('../../api/client', () => ({
   getMusicLyrics: vi.fn(() => Promise.resolve({
     title: 'Idol',
     artist: 'YOASOBI',
-    anime_context: 'Opening 1 de Oshi no Ko',
     jlpt_level: 'N3',
+    vocabulary: [
+      { word: '無敵', romanji: 'muteki', meaning: 'invincible', type: 'nom' },
+      { word: '笑顔', romanji: 'egao', meaning: 'sourire', type: 'nom' }
+    ],
     lines: [
       {
         id: 1,
         japanese: '無敵の笑顔で荒らすメディア',
         romaji: 'Muteki no egao de arasu media',
         translation: 'Conquérant les médias avec un sourire invincible',
-        vocabulary: [
-          { word: '無敵', romanji: 'muteki', meaning: 'invincible', type: 'nom' },
-          { word: '笑顔', romanji: 'egao', meaning: 'sourire', type: 'nom' }
-        ]
+        time: 0.0,
+        duration: 4.0
       }
     ]
   })),
@@ -64,6 +65,7 @@ import { getMusicPresets, resolveSpotifyTrack, getMusicLyrics, createFlashcard }
 describe('Page SensAI Music (Spotify & Karaoké)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
   });
 
   it('devrait afficher la barre de recherche et les morceaux suggérés', async () => {
@@ -96,8 +98,7 @@ describe('Page SensAI Music (Spotify & Karaoké)', () => {
 
     // Titre et badges
     await waitFor(() => {
-      expect(screen.getByText('Opening 1 de Oshi no Ko')).toBeInTheDocument();
-      expect(screen.getByText('Niveau N3')).toBeInTheDocument();
+      expect(screen.getByText(/Niveau linguistique : JLPT N3/i)).toBeInTheDocument();
       expect(screen.getByText('無敵の笑顔で荒らすメディア')).toBeInTheDocument();
       expect(screen.getByText('Muteki no egao de arasu media')).toBeInTheDocument();
       expect(screen.getByText('Conquérant les médias avec un sourire invincible')).toBeInTheDocument();
@@ -105,7 +106,7 @@ describe('Page SensAI Music (Spotify & Karaoké)', () => {
 
     // Mots de vocabulaire
     expect(screen.getByText('無敵')).toBeInTheDocument();
-    expect(screen.getByText(': invincible')).toBeInTheDocument();
+    expect(screen.getByText('sourire')).toBeInTheDocument();
   });
 
   it('devrait permettre de sauvegarder un vers en carte Anki', async () => {

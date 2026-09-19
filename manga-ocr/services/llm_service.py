@@ -65,7 +65,7 @@ class LLMService:
 
         return data
 
-    def _call_openrouter(self, user_prompt: str, text_source: str, system_prompt: str = None) -> dict:
+    def _call_openrouter(self, user_prompt: str, text_source: str, system_prompt: str = None, max_tokens: int = None) -> dict:
         if not OPENROUTER_API_KEY:
             raise ValueError("OPENROUTER_API_KEY non configurée.")
 
@@ -83,7 +83,7 @@ class LLMService:
                 {"role": "system", "content": sys_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            "max_tokens": OPENROUTER_MAX_TOKENS,
+            "max_tokens": max_tokens or OPENROUTER_MAX_TOKENS,
             "temperature": 0.1,
             "response_format": {"type": "json_object"},
             "include_reasoning": False,
@@ -115,7 +115,7 @@ class LLMService:
         return self._normalize_json_payload(content, text_source)
 
 
-    def _call_groq(self, user_prompt: str, text_source: str, system_prompt: str = None) -> dict:
+    def _call_groq(self, user_prompt: str, text_source: str, system_prompt: str = None, max_tokens: int = None) -> dict:
         if not self.groq_client:
             raise ValueError("GROQ_API_KEY non configurée pour le fallback.")
 
@@ -127,7 +127,7 @@ class LLMService:
             ],
             model=MODEL_NAME,
             temperature=0,
-            max_tokens=MAX_TOKENS,
+            max_tokens=max_tokens or MAX_TOKENS,
             response_format={"type": "json_object"},
         )
         content = completion.choices[0].message.content
@@ -182,86 +182,103 @@ class LLMService:
 
     def analyze_music_lyrics(self, title: str, artist: str = "", custom_lyrics: str = "") -> dict:
         music_system_prompt = """
-        Tu es SensAI Music, une IA experte en linguistique japonaise et musique (J-Pop, Anime, Vocaloid, J-Rock).
-        Ta mission est de fournir ou d'analyser les paroles japonaises, leur transcription en Romaji, leur traduction française poétique et fluide, ainsi que le vocabulaire clé pour apprendre le japonais en chantant.
+        Tu es SensAI Music, une IA experte en linguistique japonaise et en transcription de paroles de musique.
+        Ta mission est de fournir les paroles japonaises complètes (ou d'analyser le texte fourni), leur transcription Romaji, leur traduction française poétique et fidèle, ainsi que le minutage précis pour le karaoké et le vocabulaire clé.
 
-        Format JSON strict attendu :
+        NE FOURNIS AUCUNE ANALYSE D'ANIME, HISTORIQUE OU INTERPRÉTATION SUPERFICIELLE. Concentre-toi strictement sur les paroles et le niveau linguistique JLPT.
+
+        Format JSON strict :
         {
-            "title": "Titre du morceau",
+            "title": "Titre exact",
             "artist": "Nom de l'artiste",
-            "anime_context": "Contexte de l'anime (ex: Opening 1 de Oshi no Ko) ou signification thématique de la chanson",
-            "jlpt_level": "N4",
+            "jlpt_level": "N3",
             "lines": [
                 {
                     "id": 1,
+                    "time": 0.0,
+                    "duration": 4.5,
                     "japanese": "誰もが目を奪われていく",
                     "romaji": "Daremo ga me wo ubawarete iku",
-                    "translation": "Tout le monde se fait captiver le regard",
-                    "vocabulary": [
-                        {
-                            "word": "誰も",
-                            "romanji": "daremo",
-                            "meaning": "tout le monde",
-                            "type": "pronom"
-                        },
-                        {
-                            "word": "目を奪う",
-                            "romanji": "me wo ubau",
-                            "meaning": "capter le regard, éblouir",
-                            "type": "expression / verbe"
-                        }
-                    ]
+                    "translation": "Tout le monde se fait captiver le regard"
+                }
+            ],
+            "vocabulary": [
+                {
+                    "word": "目を奪う",
+                    "romanji": "me wo ubau",
+                    "meaning": "capter le regard, éblouir",
+                    "type": "expression / verbe"
                 }
             ]
         }
-        Réponds STRICTEMENT avec l'objet JSON ci-dessus, sans aucun texte en dehors du bloc JSON.
+        Règles d'extraction :
+        1. Transcris chaque vers dans 'lines' avec son timestamp 'time' en secondes progressif (0.0, 4.0, 8.5...) et 'duration' (en secondes).
+        2. Fournis un découpage complet et fluide (20 à 40 vers).
+        3. Dans 'vocabulary', regroupe 8 à 15 mots et tournures grammaticales clés à apprendre pour ce morceau.
+        4. Réponds STRICTEMENT avec l'objet JSON ci-dessus, sans aucun texte introductif.
         """
 
         if custom_lyrics and custom_lyrics.strip():
             user_prompt = f"""
-            Analyse ces paroles pour la chanson '{title}' ({artist}) :
+            Analyse et synchronise ces paroles pour la chanson '{title}' ({artist}) :
             {custom_lyrics.strip()}
             """
         else:
             user_prompt = f"""
-            Fournis et analyse les paroles japonaises complètes (ou les couplets et refrains principaux, entre 15 et 30 vers) de la chanson '{title}' par '{artist}'.
-            Chaque vers ou phrase doit être une entrée distincte dans la liste 'lines'.
+            Fournis et synchronise les paroles japonaises complètes de la chanson '{title}' par '{artist}'.
+            Chaque phrase ou vers doit former un élément individuel dans 'lines' avec son minutage approximatif (time en secondes).
             """
 
+        data = None
         if OPENROUTER_API_KEY:
             try:
                 logger.info(f"🎵 Analyse Paroles Musique via OpenRouter ({OPENROUTER_MODEL})...")
-                data = self._call_openrouter(user_prompt, title, system_prompt=music_system_prompt)
-                if data and "lines" in data:
-                    return data
+                data = self._call_openrouter(user_prompt, title, system_prompt=music_system_prompt, max_tokens=3500)
             except Exception as e:
                 logger.warning(f"⚠️ Échec OpenRouter musique : {e}. Bascule Groq...")
 
-        if GROQ_API_KEY:
-            try:
-                logger.info(f"🔄 Fallback analyse Paroles Musique via Groq ({MODEL_NAME})...")
-                data = self._call_groq(user_prompt, title, system_prompt=music_system_prompt)
-                if data and "lines" in data:
-                    return data
-            except Exception as e:
-                logger.error(f"❌ Échec fallback Groq musique : {e}")
+        if not data or "lines" not in data:
+            if GROQ_API_KEY:
+                try:
+                    logger.info(f"🔄 Fallback analyse Paroles Musique via Groq ({MODEL_NAME})...")
+                    data = self._call_groq(user_prompt, title, system_prompt=music_system_prompt, max_tokens=3500)
+                except Exception as e:
+                    logger.error(f"❌ Échec fallback Groq musique : {e}")
 
-        # Fallback gracieux si aucune API n'est disponible
-        return {
-            "title": title,
-            "artist": artist,
-            "anime_context": "Morceau de musique japonaise",
-            "jlpt_level": "N4",
-            "lines": [
-                {
-                    "id": 1,
-                    "japanese": f"{title} - {artist}",
-                    "romaji": "Nihon no ongaku",
-                    "translation": f"Chanson {title} par {artist}",
-                    "vocabulary": []
-                }
-            ]
-        }
+        if not data or "lines" not in data or len(data["lines"]) == 0:
+            # Fallback gracieux si échec
+            data = {
+                "title": title,
+                "artist": artist,
+                "jlpt_level": "N4",
+                "lines": [
+                    {
+                        "id": 1,
+                        "time": 0.0,
+                        "duration": 4.5,
+                        "japanese": f"{title} - {artist}",
+                        "romaji": "Nihon no ongaku",
+                        "translation": f"Paroles de {title} par {artist}"
+                    }
+                ],
+                "vocabulary": []
+            }
+
+        # Post-traitement : s'assurer que chaque ligne dispose d'un timestamp 'time' et 'duration' cohérents
+        current_time = 0.0
+        for i, line in enumerate(data.get("lines", [])):
+            if not isinstance(line, dict):
+                continue
+            line["id"] = i + 1
+            if "duration" not in line or not line["duration"]:
+                # Durée calculée intelligemment selon la longueur du vers japonais (min 3.5s)
+                jp_len = len(line.get("japanese", ""))
+                line["duration"] = round(max(3.2, min(7.5, jp_len * 0.28)), 1)
+            if "time" not in line or line.get("time") is None:
+                line["time"] = round(current_time, 1)
+            current_time = line["time"] + line["duration"]
+
+        return data
 
 
 # Instance unique

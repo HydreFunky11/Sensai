@@ -31,10 +31,12 @@ class WordVocabulary(BaseModel):
 
 class LyricLine(BaseModel):
     id: int
+    time: float = 0.0
+    duration: float = 4.0
     japanese: str
     romaji: str
     translation: str
-    vocabulary: List[WordVocabulary] = []
+    vocabulary: Optional[List[WordVocabulary]] = []
 
 class MusicLyricsRequest(BaseModel):
     title: str
@@ -45,9 +47,9 @@ class MusicLyricsRequest(BaseModel):
 class MusicLyricsResponse(BaseModel):
     title: str
     artist: str
-    anime_context: Optional[str] = ""
     jlpt_level: Optional[str] = "N4"
     lines: List[LyricLine] = []
+    vocabulary: List[WordVocabulary] = []
 
 # Liste de morceaux cultes préconfigurés pour tester instantanément
 PRESET_TRACKS = [
@@ -224,18 +226,31 @@ async def get_lyrics_and_analysis(req: MusicLyricsRequest):
 
                 lines.append(LyricLine(
                     id=line.get("id", idx),
+                    time=float(line.get("time", (idx - 1) * 4.0)),
+                    duration=float(line.get("duration", 4.0)),
                     japanese=line.get("japanese", ""),
                     romaji=line.get("romaji", ""),
                     translation=line.get("translation", ""),
                     vocabulary=vocab_list
                 ))
 
+        # Récupération du vocabulaire global de la chanson
+        song_vocab = []
+        for v in data.get("vocabulary", []):
+            if isinstance(v, dict):
+                song_vocab.append(WordVocabulary(
+                    word=v.get("word", ""),
+                    romanji=v.get("romanji") or v.get("romaji", ""),
+                    meaning=v.get("meaning", ""),
+                    type=v.get("type", "")
+                ))
+
         return MusicLyricsResponse(
             title=data.get("title", req.title),
             artist=data.get("artist", req.artist or ""),
-            anime_context=data.get("anime_context", ""),
             jlpt_level=data.get("jlpt_level", "N4"),
-            lines=lines
+            lines=lines,
+            vocabulary=song_vocab
         )
     except Exception as e:
         logger.error(f"Erreur analyse paroles musique: {e}", exc_info=True)

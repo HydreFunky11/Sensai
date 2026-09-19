@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navbar } from '../../components/Navbar/Navbar';
 import { 
   getMusicPresets, 
@@ -21,8 +21,14 @@ export default function Music() {
   const [track, setTrack] = useState(null);
   const [lyricsData, setLyricsData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeLineId, setActiveLineId] = useState(null);
+
+  // État du mode Karaoké interactif et synchronisé
   const [karaokeMode, setKaraokeMode] = useState(false);
+  const [isKaraokePlaying, setIsKaraokePlaying] = useState(false);
+  const [karaokeTime, setKaraokeTime] = useState(0);
+  const [activeLineId, setActiveLineId] = useState(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [autoPronounce, setAutoPronounce] = useState(false);
 
   // Gestion des dossiers de flashcards
   const [decks, setDecks] = useState([]);
@@ -30,6 +36,9 @@ export default function Music() {
   const [newDeckTitle, setNewDeckTitle] = useState('');
   const [showNewDeckForm, setShowNewDeckForm] = useState(false);
   const [savedLines, setSavedLines] = useState(new Set());
+  const [savedWords, setSavedWords] = useState(new Set());
+
+  const timerRef = useRef(null);
 
   useEffect(() => {
     loadPresets();
@@ -57,6 +66,61 @@ export default function Music() {
     }
   }
 
+  // --- LOGIQUE DE SYNCHRONISATION DU KARAOKÉ ---
+  useEffect(() => {
+    if (!karaokeMode || !isKaraokePlaying || !lyricsData?.lines?.length) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+
+    const lines = lyricsData.lines;
+    const lastLine = lines[lines.length - 1];
+    const totalDuration = lastLine.time + (lastLine.duration || 5);
+
+    timerRef.current = setInterval(() => {
+      setKaraokeTime((prev) => {
+        const nextTime = prev + 0.2 * playbackSpeed;
+        if (nextTime >= totalDuration) {
+          setIsKaraokePlaying(false);
+          return 0;
+        }
+
+        // Identifier la ligne active à ce timestamp
+        const currentLine = lines.find(
+          (l) => nextTime >= l.time && nextTime < l.time + (l.duration || 4.5)
+        );
+
+        if (currentLine && currentLine.id !== activeLineId) {
+          setActiveLineId(currentLine.id);
+        }
+
+        return nextTime;
+      });
+    }, 200);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [karaokeMode, isKaraokePlaying, lyricsData, playbackSpeed, activeLineId]);
+
+  // Défilement automatique fluide vers la ligne de karaoké active
+  useEffect(() => {
+    if (activeLineId && karaokeMode) {
+      const el = document.getElementById(`music-line-${activeLineId}`);
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      // Lecture vocale optionnelle en synchronisation karaoké
+      if (autoPronounce) {
+        const line = lyricsData?.lines?.find((l) => l.id === activeLineId);
+        if (line) {
+          playAudio(line.japanese);
+        }
+      }
+    }
+  }, [activeLineId, karaokeMode, autoPronounce]);
+
   const handleCreateDeck = async () => {
     if (!newDeckTitle.trim()) return;
     try {
@@ -81,6 +145,8 @@ export default function Music() {
 
     setLoading(true);
     setLyricsData(null);
+    setIsKaraokePlaying(false);
+    setKaraokeTime(0);
 
     try {
       // 1. Résolution du morceau Spotify
@@ -138,7 +204,30 @@ export default function Music() {
     handleSearch(preset.spotify_url || `${preset.artist} - ${preset.title}`);
   };
 
-  // Lecture audio d'une ligne ou d'un mot
+  // Saut de ligne interactif (au clic sur n'importe quel vers)
+  const jumpToLine = (line) => {
+    setActiveLineId(line.id);
+    setKaraokeTime(line.time || 0);
+  };
+
+  // Saut précédent / suivant en karaoké
+  const handlePrevLine = () => {
+    if (!lyricsData?.lines) return;
+    const currentIndex = lyricsData.lines.findIndex((l) => l.id === activeLineId);
+    if (currentIndex > 0) {
+      jumpToLine(lyricsData.lines[currentIndex - 1]);
+    }
+  };
+
+  const handleNextLine = () => {
+    if (!lyricsData?.lines) return;
+    const currentIndex = lyricsData.lines.findIndex((l) => l.id === activeLineId);
+    if (currentIndex >= 0 && currentIndex < lyricsData.lines.length - 1) {
+      jumpToLine(lyricsData.lines[currentIndex + 1]);
+    }
+  };
+
+  // Lecture audio d'un texte japonais (TTS)
   const playAudio = (text) => {
     if (!text) return;
     const url = getAudioUrl(text);
@@ -157,7 +246,7 @@ export default function Music() {
         deck_id: selectedDeckId || null
       });
 
-      setSavedLines(prev => new Set(prev).add(line.id));
+      setSavedLines((prev) => new Set(prev).add(line.id));
       toast.success("Vers sauvegardé dans vos fiches !");
     } catch (err) {
       toast.error("Erreur lors de la sauvegarde : " + err.message);
@@ -165,20 +254,33 @@ export default function Music() {
   };
 
   // Sauvegarde d'un mot de vocabulaire de la chanson
-  const handleSaveWordCard = async (vocab, lineJapanese) => {
+  const handleSaveWordCard = async (vocab, lineJapanese = "") => {
     try {
       await createFlashcard({
         text_source: vocab.word,
         translation: vocab.meaning,
         romaji: vocab.romanji || "",
-        context_note: `Paroles : "${lineJapanese}" (${track?.title || ''})`,
+        context_note: lineJapanese ? `Extrait : "${lineJapanese}"` : `Tiré de la chanson ${track?.title || ''}`,
         deck_id: selectedDeckId || null
       });
-      toast.success(`Mot "${vocab.word}" ajouté !`);
+      setSavedWords((prev) => new Set(prev).add(vocab.word));
+      toast.success(`Mot "${vocab.word}" ajouté aux fiches !`);
     } catch (err) {
       toast.error("Erreur sauvegarde : " + err.message);
     }
   };
+
+  // Formatage secondes -> mm:ss
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const totalDuration = lyricsData?.lines?.length
+    ? lyricsData.lines[lyricsData.lines.length - 1].time +
+      (lyricsData.lines[lyricsData.lines.length - 1].duration || 5)
+    : 0;
 
   return (
     <div className="music-page-container">
@@ -191,8 +293,8 @@ export default function Music() {
             <span role="img" aria-label="musique">🎵</span> SensAI Music & Karaoké
           </h1>
           <p className="music-hero-subtitle">
-            Collez un lien Spotify pour écouter le morceau, afficher les paroles en kanji et romaji,
-            suivre la traduction française en direct et mémoriser le vocabulaire dans Anki.
+            Collez un lien Spotify pour écouter le morceau, afficher les paroles complètes en kanji et romaji,
+            suivre le karaoké synchronisé et mémoriser le vocabulaire japonais dans vos fiches Anki.
           </p>
         </section>
 
@@ -230,7 +332,7 @@ export default function Music() {
             <textarea
               value={customLyrics}
               onChange={(e) => setCustomLyrics(e.target.value)}
-              placeholder="Collez ici les paroles japonaises si vous souhaitez analyser un texte ou une version spécifique..."
+              placeholder="Collez ici les paroles japonaises complètes si vous souhaitez analyser un texte ou une version spécifique..."
               className="music-textarea"
               aria-label="Paroles personnalisées à analyser"
             />
@@ -258,15 +360,15 @@ export default function Music() {
         {loading && (
           <div className="music-loading-box" role="status">
             <div className="music-spinner" />
-            <h3>Génération et analyse linguistique des paroles...</h3>
-            <p style={{ color: '#94a3b8' }}>Transcription romaji, découpage grammatical et traduction poétique en cours.</p>
+            <h3>Extraction et transcription des paroles complètes...</h3>
+            <p style={{ color: '#94a3b8' }}>Génération de la transcription Romaji et synchronisation temporelle.</p>
           </div>
         )}
 
         {/* Player & Content Area */}
         {lyricsData && !loading && (
           <div>
-            {/* Lecteur Spotify & Infos */}
+            {/* Lecteur Spotify & Infos Linguistiques */}
             <div className="music-player-grid">
               <div className="music-spotify-widget">
                 {track?.embed_url ? (
@@ -288,21 +390,22 @@ export default function Music() {
                 )}
               </div>
 
-              {/* Carte Info Morceau */}
+              {/* Carte Info Linguistique (Sans analyse anime) */}
               <div className="music-song-info-card">
                 <h3 className="music-info-title">{lyricsData.title}</h3>
                 <div className="music-info-artist">{lyricsData.artist || track?.artist}</div>
                 <div className="music-info-badges">
                   {lyricsData.jlpt_level && (
-                    <span className="music-badge music-badge-jlpt">Niveau {lyricsData.jlpt_level}</span>
+                    <span className="music-badge music-badge-jlpt">
+                      Niveau linguistique : JLPT {lyricsData.jlpt_level}
+                    </span>
                   )}
-                  {lyricsData.anime_context && (
-                    <span className="music-badge music-badge-anime">{lyricsData.anime_context}</span>
-                  )}
+                  <span className="music-badge" style={{ background: '#1e1e24', color: '#cbd5e1' }}>
+                    {lyricsData.lines?.length || 0} vers extraits
+                  </span>
                 </div>
                 <p className="music-info-desc">
-                  Touchez une ligne pour l'écouter ou l'activer en mode karaoké. Enregistrez les vers ou les mots clés
-                  dans vos fiches Anki d'un seul clic !
+                  Activez le mode Karaoké ci-dessous pour faire défiler les paroles en direct pendant la lecture de votre musique sur Spotify !
                 </p>
               </div>
             </div>
@@ -311,7 +414,15 @@ export default function Music() {
             <div className="music-controls-bar">
               <button
                 className={`music-karaoke-toggle ${karaokeMode ? 'active' : ''}`}
-                onClick={() => setKaraokeMode(!karaokeMode)}
+                onClick={() => {
+                  const nextState = !karaokeMode;
+                  setKaraokeMode(nextState);
+                  if (nextState) {
+                    setIsKaraokePlaying(true);
+                  } else {
+                    setIsKaraokePlaying(false);
+                  }
+                }}
                 aria-pressed={karaokeMode}
                 aria-label="Basculer le mode Karaoké"
               >
@@ -385,6 +496,84 @@ export default function Music() {
               </div>
             </div>
 
+            {/* CONTRÔLEUR SYNCHRONISÉ KARAOKÉ (Sticky lors du mode karaoké) */}
+            {karaokeMode && (
+              <div className="music-karaoke-controller" aria-label="Contrôleur de lecture karaoké">
+                <div className="music-karaoke-main-ctrls">
+                  <div className="music-karaoke-buttons">
+                    <button
+                      onClick={handlePrevLine}
+                      className="music-karaoke-btn"
+                      title="Vers précédent"
+                      aria-label="Vers précédent"
+                    >
+                      ⏮️
+                    </button>
+
+                    <button
+                      onClick={() => setIsKaraokePlaying(!isKaraokePlaying)}
+                      className="music-karaoke-btn music-karaoke-btn-primary"
+                      aria-label={isKaraokePlaying ? "Pause karaoké" : "Lecture karaoké"}
+                    >
+                      {isKaraokePlaying ? "⏸️ Pause" : "▶️ Lecture"}
+                    </button>
+
+                    <button
+                      onClick={handleNextLine}
+                      className="music-karaoke-btn"
+                      title="Vers suivant"
+                      aria-label="Vers suivant"
+                    >
+                      ⏭️
+                    </button>
+
+                    <button
+                      onClick={() => setAutoPronounce(!autoPronounce)}
+                      className="music-karaoke-btn"
+                      style={{ background: autoPronounce ? 'rgba(29, 185, 84, 0.2)' : undefined, borderColor: autoPronounce ? '#1db954' : undefined }}
+                      title="Prononcer automatiquement chaque vers en karaoké"
+                      aria-label="Prononciation vocale automatique"
+                    >
+                      🔊 Voix {autoPronounce ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="music-karaoke-time-display">
+                      {formatTime(karaokeTime)} / {formatTime(totalDuration)}
+                    </span>
+                    <button
+                      onClick={() => setPlaybackSpeed(playbackSpeed === 1 ? 1.25 : playbackSpeed === 1.25 ? 0.8 : 1)}
+                      className={`music-karaoke-speed-btn ${playbackSpeed !== 1 ? 'active' : ''}`}
+                      title="Vitesse de défilement"
+                      aria-label={`Vitesse actuelle : ${playbackSpeed}x`}
+                    >
+                      {playbackSpeed}x
+                    </button>
+                  </div>
+                </div>
+
+                {/* Curseur temporel karaoké */}
+                <input
+                  type="range"
+                  min="0"
+                  max={totalDuration || 100}
+                  step="0.5"
+                  value={karaokeTime}
+                  onChange={(e) => {
+                    const newTime = parseFloat(e.target.value);
+                    setKaraokeTime(newTime);
+                    const line = lyricsData.lines.find(
+                      (l) => newTime >= l.time && newTime < l.time + (l.duration || 4.5)
+                    );
+                    if (line) setActiveLineId(line.id);
+                  }}
+                  className="music-karaoke-slider"
+                  aria-label="Position temporelle du karaoké"
+                />
+              </div>
+            )}
+
             {/* Liste des Paroles interactives */}
             <div className="music-lyrics-list" role="list">
               {lyricsData.lines.map((line) => {
@@ -394,11 +583,12 @@ export default function Music() {
                 return (
                   <article
                     key={line.id}
+                    id={`music-line-${line.id}`}
                     role="listitem"
-                    onClick={() => setActiveLineId(line.id)}
+                    onClick={() => jumpToLine(line)}
                     className={`music-line-card ${karaokeMode && isActive ? 'active-karaoke' : ''}`}
                     tabIndex="0"
-                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setActiveLineId(line.id)}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && jumpToLine(line)}
                   >
                     <div className="music-line-header">
                       <div className="music-line-left">
@@ -435,34 +625,66 @@ export default function Music() {
                         </button>
                       </div>
                     </div>
-
-                    {/* Mots clés de vocabulaire */}
-                    {line.vocabulary && line.vocabulary.length > 0 && (
-                      <div className="music-vocab-container">
-                        {line.vocabulary.map((v, vIdx) => (
-                          <div key={vIdx} className="music-vocab-item">
-                            <span className="music-vocab-word">{v.word}</span>
-                            {v.romanji && <span className="music-vocab-reading">({v.romanji})</span>}
-                            <span className="music-vocab-meaning">: {v.meaning}</span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSaveWordCard(v, line.japanese);
-                              }}
-                              className="music-vocab-add-btn"
-                              title={`Ajouter "${v.word}" aux fiches`}
-                              aria-label={`Ajouter le mot ${v.word} aux fiches`}
-                            >
-                              +
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </article>
                 );
               })}
             </div>
+
+            {/* SECTION VOCABULAIRE CLÉ DU MORCEAU (Global) */}
+            {lyricsData.vocabulary && lyricsData.vocabulary.length > 0 && (
+              <section className="music-global-vocab-card" aria-label="Vocabulaire clé de la chanson">
+                <h3 className="music-global-vocab-title">
+                  <span>📖</span> Vocabulaire Essentiel du Morceau
+                </h3>
+                <p className="music-global-vocab-desc">
+                  Les termes clés et tournures grammaticales les plus fréquents de cette chanson pour progresser en japonais.
+                </p>
+
+                <div className="music-global-vocab-grid">
+                  {lyricsData.vocabulary.map((vocab, idx) => {
+                    const isWordSaved = savedWords.has(vocab.word);
+                    return (
+                      <div key={idx} className="music-vocab-card-item">
+                        <div className="music-vocab-item-left">
+                          <div>
+                            <span className="music-vocab-word">{vocab.word}</span>
+                            {vocab.romanji && <span className="music-vocab-reading">({vocab.romanji})</span>}
+                            {vocab.type && <span className="music-vocab-type">{vocab.type}</span>}
+                          </div>
+                          <div className="music-vocab-meaning">{vocab.meaning}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            onClick={() => playAudio(vocab.word)}
+                            className="music-audio-btn"
+                            style={{ width: '30px', height: '30px', fontSize: '0.8rem' }}
+                            title="Écouter"
+                            aria-label={`Écouter ${vocab.word}`}
+                          >
+                            🔊
+                          </button>
+                          <button
+                            onClick={() => handleSaveWordCard(vocab)}
+                            disabled={isWordSaved}
+                            className={`music-vocab-add-btn ${isWordSaved ? 'saved' : ''}`}
+                            style={{
+                              padding: '4px 10px',
+                              background: isWordSaved ? '#10b981' : '#272734',
+                              color: isWordSaved ? 'white' : '#cbd5e1',
+                              borderRadius: '6px'
+                            }}
+                            title={`Ajouter "${vocab.word}" aux fiches`}
+                            aria-label={`Ajouter le mot ${vocab.word} aux fiches`}
+                          >
+                            {isWordSaved ? '✓' : '+ Fiche'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </main>
