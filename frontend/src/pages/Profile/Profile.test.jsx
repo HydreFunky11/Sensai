@@ -29,12 +29,12 @@ vi.mock('../../api/client', () => {
 
 import { getMe, deleteAccount, exportUserData } from '../../api/client';
 
-describe('Composant Profile (Mon Profil & RGPD)', () => {
+describe('Composant Profile (Mon Profil)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('devrait afficher les informations du profil utilisateur et la section RGPD', async () => {
+  it('devrait afficher les informations du profil utilisateur', async () => {
     render(<Profile />);
 
     // Attendre le chargement

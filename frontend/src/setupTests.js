@@ -13,7 +13,16 @@ HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
   fillText: vi.fn(),
   setLineDash: vi.fn(),
   measureText: vi.fn(() => ({ width: 0 })),
+  drawImage: vi.fn(),
+  translate: vi.fn(),
+  rotate: vi.fn(),
 }));
+
+HTMLCanvasElement.prototype.toBlob = vi.fn((callback) => {
+  if (callback) {
+    callback(new Blob(['mock-canvas-blob'], { type: 'image/jpeg' }));
+  }
+});
 
 // Mocker speechSynthesis pour la prononciation audio
 const mockSpeechSynthesis = {

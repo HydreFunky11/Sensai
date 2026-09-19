@@ -7,6 +7,7 @@ import Study from './pages/Study/Study';
 import Stats from './pages/Stats/Stats';
 import Profile from './pages/Profile/Profile';
 import Alphabets from './pages/Alphabets/Alphabets';
+import Lens from './pages/Lens/Lens';
 import ReaderApp from './ReaderApp'; // On renomme l'ancien App.jsx
 
 const ProtectedRoute = ({ children }) => {
@@ -70,6 +71,12 @@ function App() {
         <Route path="/alphabets" element={
           <ProtectedRoute>
             <Alphabets />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/lens" element={
+          <ProtectedRoute>
+            <Lens />
           </ProtectedRoute>
         } />
 

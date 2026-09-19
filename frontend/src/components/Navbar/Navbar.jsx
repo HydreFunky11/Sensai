@@ -56,6 +56,18 @@ export function Navbar({ onImportClick, importing }) {
           📚 Bibliothèque
         </button>
         <button 
+          onClick={() => navigate('/lens')} 
+          aria-label="Accéder au mode Scan Photo SensAI Lens"
+          style={{
+            ...styles.navBtn, 
+            background: currentPath === '/lens' ? '#06b6d4' : 'transparent',
+            border: currentPath === '/lens' ? 'none' : '1px solid #444',
+            color: currentPath === '/lens' ? 'white' : '#cbd5e1'
+          }}
+        >
+          📸 Lens
+        </button>
+        <button 
           onClick={() => navigate('/alphabets')} 
           aria-label="Apprendre les alphabets japonais"
           style={{

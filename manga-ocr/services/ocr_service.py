@@ -1,6 +1,6 @@
 import io
 from manga_ocr import MangaOcr
-from PIL import Image
+from PIL import Image, ImageOps
 
 class OCRService:
     def __init__(self):
@@ -11,14 +11,20 @@ class OCRService:
 
     def recognize_text(self, image_data: bytes, lang: str = "ja") -> str:
         """
-        Reconnaissance de texte optimisée pour le japonais (V1).
-        L'argument lang est conservé pour la compatibilité mais ignoré.
+        Reconnaissance de texte optimisée pour le japonais.
+        Applique un rehaussement de contraste pour les photos réelles de mangas papier.
         """
         try:
             # On convertit les bytes en objet PIL Image
             image = Image.open(io.BytesIO(image_data)).convert('RGB')
             
-            # V1 : On utilise exclusivement Manga-OCR
+            # Prétraitement : rehaussement de contraste pour corriger les ombres des photos papier
+            try:
+                image = ImageOps.autocontrast(image, cutoff=0.5)
+            except Exception:
+                pass
+            
+            # Reconnaissance Manga-OCR
             text = self.mocr(image)
             
             # Debug log pour voir ce qui est extrait

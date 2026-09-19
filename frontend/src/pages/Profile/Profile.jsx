@@ -10,7 +10,7 @@ export default function Profile() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -180,7 +180,7 @@ export default function Profile() {
           <form onSubmit={handleSaveProfile} style={styles.form}>
             <div style={styles.inputGroup}>
               <label style={styles.label}>Adresse Email</label>
-              <input 
+              <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -189,11 +189,11 @@ export default function Profile() {
                 required
               />
             </div>
-            
+
             <div style={styles.row}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Nouveau mot de passe (optionnel)</label>
-                <input 
+                <input
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -203,7 +203,7 @@ export default function Profile() {
               </div>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Confirmer le mot de passe</label>
-                <input 
+                <input
                   type="password"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
@@ -230,15 +230,15 @@ export default function Profile() {
                 </span>
               </div>
               <p style={styles.billingText}>
-                {user?.is_premium 
-                  ? "Merci pour votre abonnement ! Vous bénéficiez de toutes les fonctionnalités de SensAI en illimité." 
+                {user?.is_premium
+                  ? "Merci pour votre abonnement ! Vous bénéficiez de toutes les fonctionnalités de SensAI en illimité."
                   : "Le compte gratuit est limité à 20 analyses toutes les 6 heures, 5 dossiers de révision, et 15 cartes par dossier."}
               </p>
             </div>
-            
-            <button 
-              onClick={user?.is_premium ? handlePortal : handleCheckout} 
-              disabled={checkoutLoading} 
+
+            <button
+              onClick={user?.is_premium ? handlePortal : handleCheckout}
+              disabled={checkoutLoading}
               style={user?.is_premium ? styles.btnPortal : styles.btnUpgrade}
             >
               {checkoutLoading ? "Chargement..." : (user?.is_premium ? "⚙️ Gérer mon abonnement" : "👑 Passer à Premium (9.99€/mois)")}
@@ -248,18 +248,18 @@ export default function Profile() {
 
         {/* Section 3 : Confidentialité & RGPD */}
         <div style={styles.card}>
-          <h2 style={styles.sectionTitle}>🛡️ Gestion des données (RGPD)</h2>
+          <h2 style={styles.sectionTitle}>🛡️ Gestion des données</h2>
           <p style={{ ...styles.billingText, marginBottom: '20px' }}>
-            Conformément au Règlement Général sur la Protection des Données (RGPD), vous pouvez exporter l'intégralité de vos informations (profil, dossiers de révisions, cartes et bibliothèque) au format standard JSON, ou demander la suppression définitive de votre compte.
+            Conformément au Règlement Général sur la Protection des Données, vous pouvez exporter l'intégralité de vos informations (profil, dossiers de révisions, cartes et bibliothèque) au format standard JSON, ou demander la suppression définitive de votre compte.
           </p>
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            <button 
+            <button
               onClick={handleExportData}
               style={styles.btnExport}
             >
               📥 Exporter mes données (JSON)
             </button>
-            <button 
+            <button
               onClick={handleDeleteAccount}
               style={styles.btnDelete}
             >
