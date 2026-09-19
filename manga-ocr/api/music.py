@@ -137,7 +137,7 @@ async def resolve_track(req: MusicResolveRequest):
         req_title = req.title.strip()
         req_artist = (req.artist or "").strip()
 
-        # Vérifier si cela correspond à un preset connu
+        # Vérifier d'abord si cela correspond à un preset connu
         for p in PRESET_TRACKS:
             if (req_title.lower() in p["title"].lower() or p["title"].lower() in req_title.lower()):
                 if not req_artist or req_artist.lower() in p["artist"].lower() or p["artist"].lower() in req_artist.lower():
@@ -148,6 +148,27 @@ async def resolve_track(req: MusicResolveRequest):
                         thumbnail=p["thumbnail"],
                         embed_url=p["embed_url"]
                     )
+
+        # Recherche automatique du track Spotify officiel via spotifyscraper
+        try:
+            from spotify_scraper import SpotifyClient
+            search_query = f"{req_artist} {req_title}".strip()
+            with SpotifyClient() as client:
+                res = client.search(search_query, types=("track",), limit=1)
+                if res.tracks and len(res.tracks) > 0:
+                    t = res.tracks[0]
+                    resolved_artist = t.artists[0].name if t.artists else req_artist
+                    resolved_thumb = t.album.images[0].url if t.album and hasattr(t.album, "images") and t.album.images else None
+                    logger.info(f"🎧 Morceau Spotify résolu avec succès : {t.name} par {resolved_artist} (ID: {t.id})")
+                    return MusicResolveResponse(
+                        track_id=t.id,
+                        title=t.name,
+                        artist=resolved_artist,
+                        thumbnail=resolved_thumb,
+                        embed_url=f"https://open.spotify.com/embed/track/{t.id}"
+                    )
+        except Exception as e:
+            logger.warning(f"Recherche automatique spotifyscraper échouée pour '{req_title}' ({req_artist}) : {e}")
 
         return MusicResolveResponse(
             track_id=None,
