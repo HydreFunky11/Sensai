@@ -14,7 +14,7 @@
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
-  padding: 24px 20px 60px 20px;
+  padding: 24px 20px 80px 20px;
   box-sizing: border-box;
 }
 
@@ -237,21 +237,16 @@
 .music-badge {
   font-size: 0.75rem;
   font-weight: 700;
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 6px;
   text-transform: uppercase;
 }
 
 .music-badge-jlpt {
-  background: rgba(139, 92, 246, 0.2);
-  color: #a78bfa;
-  border: 1px solid rgba(139, 92, 246, 0.4);
-}
-
-.music-badge-anime {
-  background: rgba(6, 182, 212, 0.2);
-  color: #22d3ee;
-  border: 1px solid rgba(6, 182, 212, 0.4);
+  background: rgba(139, 92, 246, 0.25);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  letter-spacing: 0.5px;
 }
 
 .music-info-desc {
@@ -308,10 +303,110 @@
 }
 
 .music-karaoke-toggle.active {
-  background: rgba(29, 185, 84, 0.2);
+  background: rgba(29, 185, 84, 0.25);
+  color: #22c55e;
+  border-color: #1db954;
+  box-shadow: 0 0 15px rgba(29, 185, 84, 0.35);
+}
+
+/* ========================================== */
+/*   KARAOKE PLAYBACK CONTROLLER (STICKY)    */
+/* ========================================== */
+.music-karaoke-controller {
+  position: sticky;
+  top: 10px;
+  z-index: 100;
+  background: rgba(20, 20, 26, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(29, 185, 84, 0.4);
+  border-radius: 14px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 0 20px rgba(29, 185, 84, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.music-karaoke-main-ctrls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.music-karaoke-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.music-karaoke-btn {
+  background: #1e1e26;
+  border: 1px solid #333340;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.music-karaoke-btn:hover {
+  background: #272734;
+  border-color: #1db954;
+  color: #22c55e;
+}
+
+.music-karaoke-btn-primary {
+  background: linear-gradient(135deg, #1db954, #10b981);
+  border: none;
+  color: white;
+  padding: 8px 18px;
+  box-shadow: 0 2px 10px rgba(29, 185, 84, 0.4);
+}
+
+.music-karaoke-btn-primary:hover {
+  background: linear-gradient(135deg, #1aa34a, #059669);
+  color: white;
+}
+
+.music-karaoke-time-display {
+  font-family: monospace;
+  font-size: 0.95rem;
+  color: #10b981;
+  font-weight: 700;
+  background: #111116;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #23232e;
+}
+
+.music-karaoke-speed-btn {
+  background: #16161d;
+  border: 1px solid #2f2f3d;
+  color: #94a3b8;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.music-karaoke-speed-btn.active {
   color: #1db954;
   border-color: #1db954;
-  box-shadow: 0 0 15px rgba(29, 185, 84, 0.3);
+}
+
+.music-karaoke-slider {
+  width: 100%;
+  accent-color: #1db954;
+  cursor: pointer;
 }
 
 /* Lyrics List & Items */
@@ -326,20 +421,31 @@
   border: 1px solid #23232b;
   border-radius: 12px;
   padding: 18px 20px;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  cursor: pointer;
+  scroll-margin-top: 140px;
 }
 
 .music-line-card:hover {
   background: #191920;
   border-color: #3b3b4a;
-  transform: translateX(2px);
+  transform: translateX(3px);
 }
 
+/* Active Karaoke Line Glowing Style */
 .music-line-card.active-karaoke {
-  border-left: 5px solid #1db954;
-  background: #171c19;
-  box-shadow: 0 0 20px rgba(29, 185, 84, 0.2);
+  border-left: 6px solid #1db954 !important;
+  border-color: rgba(29, 185, 84, 0.6);
+  background: linear-gradient(90deg, rgba(29, 185, 84, 0.12), rgba(6, 182, 212, 0.04));
+  box-shadow: 0 0 25px rgba(29, 185, 84, 0.35), inset 0 0 15px rgba(29, 185, 84, 0.05);
+  transform: scale(1.015);
+}
+
+.music-line-card.active-karaoke .music-line-japanese {
+  color: #a7f3d0;
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  font-size: 1.45rem;
 }
 
 .music-line-header {
@@ -368,6 +474,11 @@
   margin-top: 2px;
 }
 
+.music-line-card.active-karaoke .music-line-number {
+  background: #1db954;
+  color: #0c0c0e;
+}
+
 .music-line-japanese {
   font-size: 1.35rem;
   font-weight: 800;
@@ -375,6 +486,7 @@
   margin: 0 0 4px 0;
   line-height: 1.4;
   letter-spacing: 0.5px;
+  transition: all 0.2s;
 }
 
 .music-line-romaji {
@@ -443,61 +555,85 @@
   background: #10b981;
 }
 
-/* Vocabulary tags */
-.music-vocab-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid #202028;
+/* Global Song Vocabulary Section */
+.music-global-vocab-card {
+  background: #141418;
+  border: 1px solid #282834;
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 32px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
-.music-vocab-item {
-  background: #1b1b22;
-  border: 1px solid #2a2a36;
-  border-radius: 8px;
-  padding: 6px 10px;
-  display: inline-flex;
+.music-global-vocab-title {
+  margin: 0 0 6px 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.8rem;
+}
+
+.music-global-vocab-desc {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  margin: 0 0 18px 0;
+}
+
+.music-global-vocab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.music-vocab-card-item {
+  background: #1a1a22;
+  border: 1px solid #2d2d3a;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   transition: all 0.2s;
 }
 
-.music-vocab-item:hover {
+.music-vocab-card-item:hover {
+  background: #22222d;
   border-color: #06b6d4;
-  background: #22222b;
+  transform: translateY(-2px);
+}
+
+.music-vocab-item-left {
+  flex: 1;
 }
 
 .music-vocab-word {
   color: #06b6d4;
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 1.1rem;
 }
 
 .music-vocab-reading {
   color: #94a3b8;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
+  margin-left: 6px;
 }
 
 .music-vocab-meaning {
-  color: #e2e8f0;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  margin-top: 2px;
 }
 
-.music-vocab-add-btn {
-  background: transparent;
-  border: none;
-  color: #a1a1aa;
-  cursor: pointer;
-  padding: 2px 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
+.music-vocab-type {
+  font-size: 0.7rem;
+  background: #262634;
+  color: #94a3b8;
+  padding: 2px 6px;
   border-radius: 4px;
-  transition: color 0.2s;
-}
-
-.music-vocab-add-btn:hover {
-  color: #10b981;
+  margin-left: 6px;
 }
 
 /* Loader / Empty States */
