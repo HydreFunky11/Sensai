@@ -25,6 +25,13 @@ class MusicResolveResponse(BaseModel):
     thumbnail: Optional[str] = None
     embed_url: Optional[str] = None
 
+class MusicSuggestionItem(BaseModel):
+    track_id: Optional[str] = None
+    title: str
+    artist: str
+    thumbnail: Optional[str] = None
+    embed_url: Optional[str] = None
+
 class WordVocabulary(BaseModel):
     word: str
     romanji: Optional[str] = ""
@@ -125,6 +132,61 @@ def extract_spotify_track_id(url_or_uri: str) -> Optional[str]:
 async def get_presets():
     """Renvoie les morceaux japonais cultes prêts à être explorés."""
     return PRESET_TRACKS
+
+@router.get("/suggestions", response_model=List[MusicSuggestionItem], dependencies=[Depends(limiter_reader)])
+async def get_music_suggestions(q: str = "", limit: int = 5):
+    """
+    Retourne des suggestions dynamiques de morceaux Spotify correspondant à la requête q (titre ou artiste).
+    Recherche d'abord dans les presets, puis interroge Spotify via spotifyscraper.
+    """
+    query = (q or "").strip()
+    if not query or len(query) < 2:
+        return []
+
+    results: List[MusicSuggestionItem] = []
+    seen_ids = set()
+
+    # 1. Vérifier les presets correspondants
+    q_lower = query.lower()
+    for p in PRESET_TRACKS:
+        if q_lower in p["title"].lower() or q_lower in p["artist"].lower():
+            if p["track_id"] not in seen_ids:
+                seen_ids.add(p["track_id"])
+                results.append(MusicSuggestionItem(
+                    track_id=p["track_id"],
+                    title=p["title"],
+                    artist=p["artist"],
+                    thumbnail=p["thumbnail"],
+                    embed_url=p["embed_url"]
+                ))
+            if len(results) >= limit:
+                return results
+
+    # 2. Rechercher sur Spotify via spotifyscraper
+    try:
+        from spotify_scraper import SpotifyClient
+        with SpotifyClient() as client:
+            res = client.search(query, types=("track",), limit=limit)
+            if res.tracks:
+                for t in res.tracks:
+                    if t.id in seen_ids:
+                        continue
+                    seen_ids.add(t.id)
+                    artist_name = t.artists[0].name if t.artists else ""
+                    thumb = t.album.images[0].url if t.album and hasattr(t.album, "images") and t.album.images else None
+                    results.append(MusicSuggestionItem(
+                        track_id=t.id,
+                        title=t.name,
+                        artist=artist_name,
+                        thumbnail=thumb,
+                        embed_url=f"https://open.spotify.com/embed/track/{t.id}"
+                    ))
+                    if len(results) >= limit:
+                        break
+    except Exception as e:
+        logger.warning(f"Recherche de suggestions Spotify échouée pour '{query}' : {e}")
+
+    return results
 
 @router.post("/resolve", response_model=MusicResolveResponse, dependencies=[Depends(limiter_reader)])
 async def resolve_track(req: MusicResolveRequest):

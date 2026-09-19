@@ -153,3 +153,29 @@ def test_get_lyrics_empty_title_fails(client):
         json={"title": "   ", "artist": "LiSA"}
     )
     assert response.status_code == 400
+
+def test_get_music_suggestions_presets(client):
+    # Test avec un preset connu par titre
+    response = client.get("/music/suggestions?q=Idol")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    assert any("YOASOBI" in s["artist"] for s in data)
+    assert "embed_url" in data[0]
+
+    # Test avec un preset connu par artiste
+    response = client.get("/music/suggestions?q=LiSA")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert any("Gurenge" in s["title"] for s in data)
+
+def test_get_music_suggestions_empty_query(client):
+    response = client.get("/music/suggestions?q=a")
+    assert response.status_code == 200
+    assert response.json() == []
+
+    response2 = client.get("/music/suggestions?q=")
+    assert response2.status_code == 200
+    assert response2.json() == []

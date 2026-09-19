@@ -28,6 +28,15 @@ vi.mock('../../api/client', () => ({
       embed_url: 'https://open.spotify.com/embed/track/7vRri9DEyKtA1EIGjuz1L4'
     }
   ])),
+  getMusicSuggestions: vi.fn((query) => Promise.resolve([
+    {
+      track_id: '7FTTLL9jM3wcpgeCAJU9L6',
+      title: 'KIRA',
+      artist: 'Ado',
+      thumbnail: 'https://example.com/kira.jpg',
+      embed_url: 'https://open.spotify.com/embed/track/7FTTLL9jM3wcpgeCAJU9L6'
+    }
+  ])),
   resolveSpotifyTrack: vi.fn(() => Promise.resolve({
     track_id: '7vRri9DEyKtA1EIGjuz1L4',
     title: 'Idol',
@@ -60,7 +69,7 @@ vi.mock('../../api/client', () => ({
   getAudioUrl: vi.fn((text) => `http://testserver/tts?text=${encodeURIComponent(text)}`),
 }));
 
-import { getMusicPresets, resolveSpotifyTrack, getMusicLyrics, createFlashcard } from '../../api/client';
+import { getMusicPresets, getMusicSuggestions, resolveSpotifyTrack, getMusicLyrics, createFlashcard } from '../../api/client';
 
 describe('Page SensAI Music (Spotify & Karaoké)', () => {
   beforeEach(() => {
@@ -244,5 +253,33 @@ describe('Page SensAI Music (Spotify & Karaoké)', () => {
     fireEvent.click(toggleCustomBtn);
 
     expect(screen.getByPlaceholderText(/Collez ici les paroles japonaises/i)).toBeInTheDocument();
+  });
+
+  it('devrait charger les suggestions en direct et lancer automatiquement le morceau au clic', async () => {
+    render(<Music />);
+
+    const titleInput = screen.getByPlaceholderText(/Nom de la musique/i);
+    fireEvent.change(titleInput, { target: { value: 'KIRA' } });
+
+    // Les suggestions doivent apparaître après le debounce
+    await waitFor(() => {
+      expect(getMusicSuggestions).toHaveBeenCalledWith('KIRA');
+      expect(screen.getByText('KIRA')).toBeInTheDocument();
+      expect(screen.getByText('Ado')).toBeInTheDocument();
+      expect(screen.getByText('▶ Lancer')).toBeInTheDocument();
+    });
+
+    // Clic sur la suggestion
+    const suggestionItem = screen.getByText('▶ Lancer');
+    fireEvent.click(suggestionItem);
+
+    // Vérifier que les champs ont été remplis et que la recherche s'est lancée
+    await waitFor(() => {
+      expect(resolveSpotifyTrack).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'KIRA',
+        artist: 'Ado',
+      }));
+      expect(getMusicLyrics).toHaveBeenCalled();
+    });
   });
 });
