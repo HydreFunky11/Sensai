@@ -24,6 +24,15 @@ class Token(BaseModel):
 
 @router.post("/register", response_model=Token, dependencies=[Depends(limiter_strict)])
 def register(user: UserCreate, db: Session = Depends(get_db)):
+    import os
+    allow_public = os.getenv("ALLOW_PUBLIC_REGISTRATION", "false").lower() in ("true", "1")
+    if not allow_public:
+        logger.warning("Tentative d'inscription publique bloquée pour %s (mode bêta privée)", user.email)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Les inscriptions publiques sont actuellement fermées. SensAI est en version bêta privée sur invitation."
+        )
+
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         logger.warning("Échec d'inscription : l'email %s est déjà enregistré", user.email)
@@ -62,6 +71,7 @@ class UserMe(BaseModel):
     id: int
     email: str
     is_premium: bool
+    is_admin: bool = False
 
     class Config:
         from_attributes = True

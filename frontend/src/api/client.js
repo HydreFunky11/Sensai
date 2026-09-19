@@ -591,3 +591,94 @@ export async function getMusicLyrics(title, artist = "", trackId = null, customL
   return response.json();
 }
 
+// --- GESTION ADMINISTRATEUR ---
+
+export async function getAdminStats() {
+  const response = await fetch(`${BASE_URL}/admin/stats`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur récupération stats admin");
+  }
+  return response.json();
+}
+
+export async function getAdminUsers() {
+  const response = await fetch(`${BASE_URL}/admin/users`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur récupération utilisateurs");
+  }
+  return response.json();
+}
+
+export async function createAdminUser(userData) {
+  const response = await fetch(`${BASE_URL}/admin/users`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(userData),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur création compte utilisateur");
+  }
+  return response.json();
+}
+
+export async function toggleAdminUserPremium(userId, isPremium) {
+  const response = await fetch(`${BASE_URL}/admin/users/${userId}/premium`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ is_premium: isPremium }),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur mise à jour statut premium");
+  }
+  return response.json();
+}
+
+export async function resetAdminUserPassword(userId, newPassword) {
+  const response = await fetch(`${BASE_URL}/admin/users/${userId}/password`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ new_password: newPassword }),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur réinitialisation mot de passe");
+  }
+  return response.json();
+}
+
+export async function deleteAdminUser(userId) {
+  const response = await fetch(`${BASE_URL}/admin/users/${userId}`, {
+    method: "DELETE",
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur suppression utilisateur");
+  }
+  return response.json();
+}
+
+
