@@ -388,66 +388,6 @@ export default function Home() {
 
         {/* MAIN LIBRARY GRID */}
         <main style={styles.main} aria-label="Contenu de la bibliothèque">
-          {/* BANNIÈRE SENSAI LENS */}
-          <div 
-            style={styles.lensBanner} 
-            onClick={() => navigate('/lens')}
-            role="region"
-            aria-label="Scan de manga papier avec SensAI Lens"
-          >
-            <div style={styles.lensBannerLeft}>
-              <div style={styles.lensBannerIcon}>📸</div>
-              <div>
-                <div style={styles.lensBannerHeading}>
-                  <h2 style={styles.lensBannerTitle}>SensAI Lens — Scanner un Manga Papier</h2>
-                  <span style={styles.lensBannerBadge}>Nouveau</span>
-                </div>
-                <p style={styles.lensBannerDesc}>
-                  Prenez en photo une page physique avec votre smartphone ou webcam. SensAI détecte automatiquement les bulles, traduit et crée vos fiches Anki en un clic.
-                </p>
-              </div>
-            </div>
-            <button 
-              onClick={(e) => { e.stopPropagation(); navigate('/lens'); }}
-              style={styles.lensBannerBtn}
-              aria-label="Ouvrir SensAI Lens"
-            >
-              Lancer le scan ➔
-            </button>
-          </div>
-
-          {/* BANNIÈRE SENSAI MUSIC */}
-          <div 
-            style={{
-              ...styles.lensBanner,
-              background: 'linear-gradient(135deg, rgba(29, 185, 84, 0.15), rgba(6, 182, 212, 0.15))',
-              border: '1px solid rgba(29, 185, 84, 0.3)'
-            }} 
-            onClick={() => navigate('/music')}
-            role="region"
-            aria-label="Apprendre avec Spotify et les paroles japonaises"
-          >
-            <div style={styles.lensBannerLeft}>
-              <div style={styles.lensBannerIcon}>🎵</div>
-              <div>
-                <div style={styles.lensBannerHeading}>
-                  <h2 style={styles.lensBannerTitle}>SensAI Music — Spotify & Karaoké</h2>
-                  <span style={{ ...styles.lensBannerBadge, background: '#1db954' }}>Nouveau</span>
-                </div>
-                <p style={styles.lensBannerDesc}>
-                  Collez un lien Spotify pour écouter un opening ou hit J-Pop, lire les paroles synchronisées vers par vers et mémoriser le vocabulaire dans Anki.
-                </p>
-              </div>
-            </div>
-            <button 
-              onClick={(e) => { e.stopPropagation(); navigate('/music'); }}
-              style={{ ...styles.lensBannerBtn, background: 'linear-gradient(135deg, #1db954, #059669)', boxShadow: '0 4px 12px rgba(29, 185, 84, 0.3)' }}
-              aria-label="Ouvrir SensAI Music"
-            >
-              Écouter & Traduire ➔
-            </button>
-          </div>
-
           <div style={styles.toolbar}>
              <div style={styles.sortControls}>
                <label htmlFor="sort-select" style={{ color: '#bdc3c7', fontSize: '0.9rem' }}>Trier par :</label>
@@ -766,40 +706,5 @@ const styles = {
   modalInput: { width: '100%', padding: '10px', fontSize: '1rem', border: '1px solid #bdc3c7', borderRadius: '4px', marginBottom: '20px', boxSizing: 'border-box', color: '#2c3e50' },
   modalActions: { display: 'flex', justifyContent: 'flex-end', gap: '10px' },
   btnCancel: { padding: '8px 15px', background: '#ecf0f1', color: '#7f8c8d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' },
-  btnSave: { padding: '8px 15px', background: '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' },
-
-  // Styles de la bannière Lens
-  lensBanner: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(139, 92, 246, 0.15))',
-    border: '1px solid rgba(6, 182, 212, 0.3)',
-    borderRadius: '12px',
-    padding: '16px 20px',
-    marginBottom: '20px',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    gap: '16px',
-    flexWrap: 'wrap'
-  },
-  lensBannerLeft: { display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: '260px' },
-  lensBannerIcon: { fontSize: '2.4rem', flexShrink: 0 },
-  lensBannerHeading: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' },
-  lensBannerTitle: { margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#f1f5f9' },
-  lensBannerBadge: { background: '#06b6d4', color: '#0c0c0e', fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '12px', textTransform: 'uppercase' },
-  lensBannerDesc: { margin: 0, fontSize: '0.85rem', color: '#94a3b8', lineHeight: 1.4 },
-  lensBannerBtn: {
-    background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
-    color: 'white',
-    border: 'none',
-    padding: '10px 18px',
-    borderRadius: '8px',
-    fontWeight: 700,
-    fontSize: '0.9rem',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    boxShadow: '0 4px 12px rgba(6, 182, 212, 0.3)',
-    transition: 'transform 0.2s ease'
-  }
+  btnSave: { padding: '8px 15px', background: '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }
 };
