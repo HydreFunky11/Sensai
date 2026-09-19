@@ -515,3 +515,53 @@ export async function importToLibrary(file, folderId = null, title = null, pageS
   }
   return response.json();
 }
+
+// --- SENSAI MUSIC (SPOTIFY & PAROLES) ---
+
+export async function getMusicPresets() {
+  const response = await fetch(`${BASE_URL}/music/presets`);
+  if (!response.ok) {
+    throw new Error("Impossible de charger les morceaux suggérés");
+  }
+  return response.json();
+}
+
+export async function resolveSpotifyTrack(spotifyUrl = "", query = "") {
+  const response = await fetch(`${BASE_URL}/music/resolve`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ spotify_url: spotifyUrl, query }),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Impossible de résoudre le morceau Spotify");
+  }
+  return response.json();
+}
+
+export async function getMusicLyrics(title, artist = "", trackId = null, customLyrics = "") {
+  const response = await fetch(`${BASE_URL}/music/lyrics`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({
+      title,
+      artist,
+      track_id: trackId,
+      custom_lyrics: customLyrics,
+    }),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || "Erreur lors de l'analyse des paroles");
+  }
+  return response.json();
+}
+

@@ -68,6 +68,18 @@ export function Navbar({ onImportClick, importing }) {
           📸 Lens
         </button>
         <button 
+          onClick={() => navigate('/music')} 
+          aria-label="Accéder à la musique et au karaoké SensAI Music"
+          style={{
+            ...styles.navBtn, 
+            background: currentPath === '/music' ? '#1db954' : 'transparent',
+            border: currentPath === '/music' ? 'none' : '1px solid #444',
+            color: currentPath === '/music' ? 'white' : '#cbd5e1'
+          }}
+        >
+          🎵 Musique
+        </button>
+        <button 
           onClick={() => navigate('/alphabets')} 
           aria-label="Apprendre les alphabets japonais"
           style={{

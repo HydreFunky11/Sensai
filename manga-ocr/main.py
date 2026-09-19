@@ -7,6 +7,7 @@ from api.auth import router as auth_router
 from api.cards import router as cards_router
 from api.library import router as library_router
 from api.payments import router as payments_router
+from api.music import router as music_router
 from db.database import engine
 from db import models
 from core.rate_limiter import limiter_general
@@ -73,6 +74,7 @@ app.include_router(general_router)
 app.include_router(cards_router)
 app.include_router(library_router)
 app.include_router(payments_router)
+app.include_router(music_router)
 
 from db.database import SessionLocal
 from sqlalchemy import text

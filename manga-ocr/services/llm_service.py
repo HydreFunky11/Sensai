@@ -65,7 +65,7 @@ class LLMService:
 
         return data
 
-    def _call_openrouter(self, user_prompt: str, text_source: str) -> dict:
+    def _call_openrouter(self, user_prompt: str, text_source: str, system_prompt: str = None) -> dict:
         if not OPENROUTER_API_KEY:
             raise ValueError("OPENROUTER_API_KEY non configurée.")
 
@@ -75,11 +75,12 @@ class LLMService:
             "HTTP-Referer": "http://127.0.0.1:5173",
             "X-Title": "SensAI",
         }
+        sys_prompt = system_prompt or self.system_prompt
         # Optimisation haute performance pour la réactivité du lecteur
         payload = {
             "model": OPENROUTER_MODEL,
             "messages": [
-                {"role": "system", "content": self.system_prompt},
+                {"role": "system", "content": sys_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             "max_tokens": OPENROUTER_MAX_TOKENS,
@@ -114,13 +115,14 @@ class LLMService:
         return self._normalize_json_payload(content, text_source)
 
 
-    def _call_groq(self, user_prompt: str, text_source: str) -> dict:
+    def _call_groq(self, user_prompt: str, text_source: str, system_prompt: str = None) -> dict:
         if not self.groq_client:
             raise ValueError("GROQ_API_KEY non configurée pour le fallback.")
 
+        sys_prompt = system_prompt or self.system_prompt
         completion = self.groq_client.chat.completions.create(
             messages=[
-                {"role": "system", "content": self.system_prompt},
+                {"role": "system", "content": sys_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             model=MODEL_NAME,
@@ -176,6 +178,89 @@ class LLMService:
             "romaji": "...",
             "breakdown": [],
             "error": "Impossible d'obtenir une réponse de l'IA (OpenRouter & Groq indisponibles).",
+        }
+
+    def analyze_music_lyrics(self, title: str, artist: str = "", custom_lyrics: str = "") -> dict:
+        music_system_prompt = """
+        Tu es SensAI Music, une IA experte en linguistique japonaise et musique (J-Pop, Anime, Vocaloid, J-Rock).
+        Ta mission est de fournir ou d'analyser les paroles japonaises, leur transcription en Romaji, leur traduction française poétique et fluide, ainsi que le vocabulaire clé pour apprendre le japonais en chantant.
+
+        Format JSON strict attendu :
+        {
+            "title": "Titre du morceau",
+            "artist": "Nom de l'artiste",
+            "anime_context": "Contexte de l'anime (ex: Opening 1 de Oshi no Ko) ou signification thématique de la chanson",
+            "jlpt_level": "N4",
+            "lines": [
+                {
+                    "id": 1,
+                    "japanese": "誰もが目を奪われていく",
+                    "romaji": "Daremo ga me wo ubawarete iku",
+                    "translation": "Tout le monde se fait captiver le regard",
+                    "vocabulary": [
+                        {
+                            "word": "誰も",
+                            "romanji": "daremo",
+                            "meaning": "tout le monde",
+                            "type": "pronom"
+                        },
+                        {
+                            "word": "目を奪う",
+                            "romanji": "me wo ubau",
+                            "meaning": "capter le regard, éblouir",
+                            "type": "expression / verbe"
+                        }
+                    ]
+                }
+            ]
+        }
+        Réponds STRICTEMENT avec l'objet JSON ci-dessus, sans aucun texte en dehors du bloc JSON.
+        """
+
+        if custom_lyrics and custom_lyrics.strip():
+            user_prompt = f"""
+            Analyse ces paroles pour la chanson '{title}' ({artist}) :
+            {custom_lyrics.strip()}
+            """
+        else:
+            user_prompt = f"""
+            Fournis et analyse les paroles japonaises complètes (ou les couplets et refrains principaux, entre 15 et 30 vers) de la chanson '{title}' par '{artist}'.
+            Chaque vers ou phrase doit être une entrée distincte dans la liste 'lines'.
+            """
+
+        if OPENROUTER_API_KEY:
+            try:
+                logger.info(f"🎵 Analyse Paroles Musique via OpenRouter ({OPENROUTER_MODEL})...")
+                data = self._call_openrouter(user_prompt, title, system_prompt=music_system_prompt)
+                if data and "lines" in data:
+                    return data
+            except Exception as e:
+                logger.warning(f"⚠️ Échec OpenRouter musique : {e}. Bascule Groq...")
+
+        if GROQ_API_KEY:
+            try:
+                logger.info(f"🔄 Fallback analyse Paroles Musique via Groq ({MODEL_NAME})...")
+                data = self._call_groq(user_prompt, title, system_prompt=music_system_prompt)
+                if data and "lines" in data:
+                    return data
+            except Exception as e:
+                logger.error(f"❌ Échec fallback Groq musique : {e}")
+
+        # Fallback gracieux si aucune API n'est disponible
+        return {
+            "title": title,
+            "artist": artist,
+            "anime_context": "Morceau de musique japonaise",
+            "jlpt_level": "N4",
+            "lines": [
+                {
+                    "id": 1,
+                    "japanese": f"{title} - {artist}",
+                    "romaji": "Nihon no ongaku",
+                    "translation": f"Chanson {title} par {artist}",
+                    "vocabulary": []
+                }
+            ]
         }
 
 
