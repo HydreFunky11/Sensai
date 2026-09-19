@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Navbar } from '../../components/Navbar/Navbar';
 import { 
   getMusicPresets, 
+  getMusicSuggestions,
   resolveSpotifyTrack, 
   getMusicLyrics, 
   getAudioUrl, 
@@ -21,6 +22,12 @@ export default function Music() {
   const [showCustomLyrics, setShowCustomLyrics] = useState(false);
   const [presets, setPresets] = useState([]);
   
+  // Suggestions en direct (autocomplétion)
+  const [suggestions, setSuggestions] = useState([]);
+  const [activeSuggestionField, setActiveSuggestionField] = useState(null); // 'title' | 'artist' | null
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const suggestionsRef = useRef(null);
+
   const [track, setTrack] = useState(null);
   const [lyricsData, setLyricsData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -206,6 +213,76 @@ export default function Music() {
       console.error("Erreur chargement dossiers :", err);
     }
   }
+
+  // Chargement debouncé des suggestions en direct pour Titre ou Artiste
+  useEffect(() => {
+    if (searchMode !== 'manual') {
+      setSuggestions([]);
+      return;
+    }
+
+    const query = activeSuggestionField === 'title'
+      ? songTitle.trim()
+      : activeSuggestionField === 'artist'
+        ? songArtist.trim()
+        : '';
+
+    if (!query || query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setLoadingSuggestions(true);
+      try {
+        const results = await getMusicSuggestions(query);
+        setSuggestions(results);
+      } catch (e) {
+        console.warn("Erreur chargement suggestions :", e);
+        setSuggestions([]);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [songTitle, songArtist, activeSuggestionField, searchMode]);
+
+  // Fermer la liste de suggestions au clic extérieur ou touche Échap
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
+        setActiveSuggestionField(null);
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setActiveSuggestionField(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const handleSelectSuggestion = (item) => {
+    setSongTitle(item.title);
+    setSongArtist(item.artist);
+    setActiveSuggestionField(null);
+    setSuggestions([]);
+
+    // Lancer automatiquement l'analyse et la musique au clic (choix utilisateur)
+    handleSearch({
+      title: item.title,
+      artist: item.artist,
+      spotify_url: item.embed_url
+    });
+  };
 
   // --- LOGIQUE DE SYNCHRONISATION DU KARAOKÉ ---
   useEffect(() => {
@@ -516,25 +593,90 @@ export default function Music() {
 
           <div className="music-search-bar">
             {searchMode === 'manual' ? (
-              <div className="music-manual-fields">
-                <input
-                  type="text"
-                  value={songTitle}
-                  onChange={(e) => setSongTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  placeholder="Nom de la musique (ex: KIRA, Idol, Gurenge...)"
-                  className="music-input"
-                  aria-label="Titre de la chanson"
-                />
-                <input
-                  type="text"
-                  value={songArtist}
-                  onChange={(e) => setSongArtist(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  placeholder="Nom de l'artiste (ex: Ado, YOASOBI, LiSA...)"
-                  className="music-input"
-                  aria-label="Nom de l'artiste"
-                />
+              <div className="music-manual-fields" ref={suggestionsRef}>
+                <div className="music-field-wrapper">
+                  <input
+                    type="text"
+                    value={songTitle}
+                    onChange={(e) => {
+                      setSongTitle(e.target.value);
+                      setActiveSuggestionField('title');
+                    }}
+                    onFocus={() => setActiveSuggestionField('title')}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    placeholder="Nom de la musique (ex: KIRA, Idol, Gurenge...)"
+                    className="music-input"
+                    aria-label="Titre de la chanson"
+                    autoComplete="off"
+                  />
+                  {activeSuggestionField === 'title' && suggestions.length > 0 && (
+                    <ul className="music-suggestions-dropdown" role="listbox" aria-label="Suggestions de morceaux">
+                      {suggestions.map((item, idx) => (
+                        <li
+                          key={item.track_id || idx}
+                          className="music-suggestion-item"
+                          onClick={() => handleSelectSuggestion(item)}
+                          role="option"
+                          tabIndex="0"
+                          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelectSuggestion(item)}
+                        >
+                          {item.thumbnail ? (
+                            <img src={item.thumbnail} alt="" className="music-suggestion-thumb" />
+                          ) : (
+                            <div className="music-suggestion-thumb-placeholder">🎵</div>
+                          )}
+                          <div className="music-suggestion-info">
+                            <span className="music-suggestion-title">{item.title}</span>
+                            <span className="music-suggestion-artist">{item.artist}</span>
+                          </div>
+                          <span className="music-suggestion-play-badge">▶ Lancer</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="music-field-wrapper">
+                  <input
+                    type="text"
+                    value={songArtist}
+                    onChange={(e) => {
+                      setSongArtist(e.target.value);
+                      setActiveSuggestionField('artist');
+                    }}
+                    onFocus={() => setActiveSuggestionField('artist')}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    placeholder="Nom de l'artiste (ex: Ado, YOASOBI, LiSA...)"
+                    className="music-input"
+                    aria-label="Nom de l'artiste"
+                    autoComplete="off"
+                  />
+                  {activeSuggestionField === 'artist' && suggestions.length > 0 && (
+                    <ul className="music-suggestions-dropdown" role="listbox" aria-label="Titres de cet artiste">
+                      {suggestions.map((item, idx) => (
+                        <li
+                          key={item.track_id || idx}
+                          className="music-suggestion-item"
+                          onClick={() => handleSelectSuggestion(item)}
+                          role="option"
+                          tabIndex="0"
+                          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelectSuggestion(item)}
+                        >
+                          {item.thumbnail ? (
+                            <img src={item.thumbnail} alt="" className="music-suggestion-thumb" />
+                          ) : (
+                            <div className="music-suggestion-thumb-placeholder">🎵</div>
+                          )}
+                          <div className="music-suggestion-info">
+                            <span className="music-suggestion-title">{item.title}</span>
+                            <span className="music-suggestion-artist">{item.artist}</span>
+                          </div>
+                          <span className="music-suggestion-play-badge">▶ Lancer</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             ) : (
               <input

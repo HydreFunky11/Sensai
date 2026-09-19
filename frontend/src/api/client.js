@@ -526,6 +526,20 @@ export async function getMusicPresets() {
   return response.json();
 }
 
+export async function getMusicSuggestions(query, limit = 5) {
+  if (!query || query.trim().length < 2) return [];
+  try {
+    const response = await fetch(`${BASE_URL}/music/suggestions?q=${encodeURIComponent(query.trim())}&limit=${limit}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return [];
+    return response.json();
+  } catch (err) {
+    console.warn("Erreur suggestions musique :", err);
+    return [];
+  }
+}
+
 export async function resolveSpotifyTrack(spotifyUrlOrOptions = "", query = "") {
   let bodyPayload = {};
   if (typeof spotifyUrlOrOptions === "object" && spotifyUrlOrOptions !== null) {
