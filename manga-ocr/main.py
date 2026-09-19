@@ -44,24 +44,27 @@ def seed_admin_user():
     from core.security import get_password_hash
     db = SessionLocal()
     try:
-        admin_email = os.getenv("ADMIN_DEFAULT_EMAIL", "admin@sensai.local")
+        admin_emails = ["admin@sensai.local", "admin@sensai.com"]
         admin_password = os.getenv("ADMIN_DEFAULT_PASSWORD", "AdminSensAI2026!")
-        admin = db.query(models.User).filter(models.User.email == admin_email).first()
-        if not admin:
-            admin = models.User(
-                email=admin_email,
-                hashed_password=get_password_hash(admin_password),
-                is_admin=True,
-                is_premium=True
-            )
-            db.add(admin)
-            db.commit()
-            logger.info("Compte administrateur initial créé : %s", admin_email)
-        elif not admin.is_admin:
-            admin.is_admin = True
-            admin.is_premium = True
-            db.commit()
-            logger.info("Compte existant promu administrateur : %s", admin_email)
+        hashed_pwd = get_password_hash(admin_password)
+
+        for email in admin_emails:
+            admin = db.query(models.User).filter(models.User.email == email).first()
+            if not admin:
+                admin = models.User(
+                    email=email,
+                    hashed_password=hashed_pwd,
+                    is_admin=True,
+                    is_premium=True
+                )
+                db.add(admin)
+                db.commit()
+                logger.info("Compte administrateur initial créé : %s", email)
+            elif not admin.is_admin or not admin.is_premium:
+                admin.is_admin = True
+                admin.is_premium = True
+                db.commit()
+                logger.info("Compte existant mis à jour administrateur : %s", email)
     except Exception as e:
         logger.warning("Erreur lors de l'initialisation du compte admin : %s", e)
     finally:

@@ -28,7 +28,7 @@ class UserSummary(BaseModel):
         from_attributes = True
 
 class AdminUserCreate(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     is_premium: bool = False
     is_admin: bool = False

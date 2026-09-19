@@ -49,6 +49,18 @@ def test_login_user(client):
     )
     assert response_fail_email.status_code == 401
 
+def test_login_with_local_domain(client, db):
+    from db import models
+    from core.security import get_password_hash
+    # Vérifie qu'une adresse en .local ne déclenche pas d'erreur 422
+    user = models.User(email="admin@sensai.local", hashed_password=get_password_hash("LocalPass123!"))
+    db.add(user)
+    db.commit()
+
+    response = client.post("/auth/login", json={"email": "admin@sensai.local", "password": "LocalPass123!"})
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+
 def test_get_current_user_profile(client):
     # Inscription et récupération du token
     reg_response = client.post(
