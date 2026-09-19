@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getAudioUrl, createFlashcard, getDecks, createDeck } from '../../api/client';
 import { toast } from 'react-hot-toast';
 
-export function AnalysisPanel({ analysis }) {
+export function AnalysisPanel({ analysis, loading = false }) {
   const [saving, setSaving] = useState(false);
   const [savedText, setSavedText] = useState(null);
   
@@ -83,6 +83,18 @@ export function AnalysisPanel({ analysis }) {
       setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="analysis-placeholder" role="status" aria-live="polite">
+        <div className="viewer-inline-spinner" style={{ width: '36px', height: '36px', borderWidth: '3px', borderTopColor: '#06b6d4', marginBottom: '16px' }} />
+        <h3 style={{ margin: '0 0 8px 0', color: '#cbd5e1', fontWeight: 600 }}>Analyse linguistique en cours...</h3>
+        <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: '1.4' }}>
+          SensAI extrait le texte japonais et prépare la traduction mot à mot.
+        </p>
+      </div>
+    );
+  }
 
   if (!analysis) {
     return (

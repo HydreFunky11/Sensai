@@ -502,7 +502,15 @@ export default function Lens() {
 
           {/* Panneau droit : Analyse & Fiches */}
           <section className="lens-analysis-pane" aria-label="Résultats de l'analyse linguistique">
-            {analysis ? (
+            {analyzing ? (
+              <div className="lens-placeholder" role="status" aria-live="polite">
+                <div className="lens-inline-spinner" style={{ width: '36px', height: '36px', borderWidth: '3px', borderTopColor: '#06b6d4', marginBottom: '16px' }} />
+                <h3 style={{ color: '#cbd5e1', fontWeight: 600 }}>Analyse linguistique en cours...</h3>
+                <p>
+                  SensAI extrait le texte japonais et prépare la traduction mot à mot.
+                </p>
+              </div>
+            ) : analysis ? (
               <AnalysisPanel analysis={analysis} />
             ) : (
               <div className="lens-placeholder">

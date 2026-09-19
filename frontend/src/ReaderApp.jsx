@@ -99,8 +99,6 @@ function ReaderApp() {
     }
   };
 
-  const isLoading = loadingFiles || translating;
-
   return (
     <div className="reader-container">
       {/* Overlay de Calibration */}
@@ -133,14 +131,12 @@ function ReaderApp() {
         />
       )}
 
-      {/* Overlay de Chargement Premium */}
-      {isLoading && (
+      {/* Overlay de Chargement initial pour les fichiers / PDF */}
+      {loadingFiles && (
         <div className="glass-loader-overlay" role="status" aria-live="polite">
           <div className="glass-loader-spinner"></div>
           <h2 style={{ margin: 0, fontWeight: 700, letterSpacing: "0.5px" }}>
-            {loadingFiles
-              ? "Chargement du document..."
-              : "Analyse SensAI en cours..."}
+            Chargement du document...
           </h2>
           <p style={{ opacity: 0.6, fontSize: "0.9rem", marginTop: "8px" }}>
             Veuillez patienter quelques instants
@@ -345,7 +341,7 @@ function ReaderApp() {
               gazeData={gazeData}
             />
 
-            <AnalysisPanel analysis={analysis} />
+            <AnalysisPanel analysis={analysis} loading={translating} />
           </div>
         ) : (
           <div
