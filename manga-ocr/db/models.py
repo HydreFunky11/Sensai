@@ -14,6 +14,7 @@ class User(Base):
     # Stripe payment integrations
     stripe_customer_id = Column(String, unique=True, index=True, nullable=True)
     is_premium = Column(Boolean, default=False)
+    is_admin = Column(Boolean, default=False)
     subscription_id = Column(String, nullable=True)
     subscription_end_at = Column(DateTime, nullable=True)
 

@@ -8,18 +8,20 @@ export function Navbar({ onImportClick, importing }) {
   const location = useLocation();
   const currentPath = location.pathname;
   const [isPremium, setIsPremium] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
 
   useEffect(() => {
-    async function checkPremiumStatus() {
+    async function checkUserStatus() {
       try {
         const userData = await getMe();
         setIsPremium(userData.is_premium);
+        setIsAdmin(!!userData.is_admin);
       } catch (err) {
-        console.error("Erreur statut premium navbar:", err);
+        console.error("Erreur statut navbar:", err);
       }
     }
-    checkPremiumStatus();
+    checkUserStatus();
   }, [currentPath]);
 
   const handleSubscribe = async () => {
@@ -127,6 +129,22 @@ export function Navbar({ onImportClick, importing }) {
         >
           👤 Profil
         </button>
+
+        {isAdmin && (
+          <button 
+            onClick={() => navigate('/admin')} 
+            aria-label="Accéder au panneau d'administration"
+            style={{
+              ...styles.navBtn, 
+              background: currentPath === '/admin' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent',
+              border: currentPath === '/admin' ? 'none' : '1px solid #f59e0b',
+              color: currentPath === '/admin' ? 'white' : '#f59e0b',
+              boxShadow: currentPath === '/admin' ? '0 2px 8px rgba(245, 158, 11, 0.4)' : 'none'
+            }}
+          >
+            🛡️ Admin
+          </button>
+        )}
 
         {currentPath === '/' && onImportClick && (
           <button 

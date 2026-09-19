@@ -8,6 +8,7 @@ from api.cards import router as cards_router
 from api.library import router as library_router
 from api.payments import router as payments_router
 from api.music import router as music_router
+from api.admin import router as admin_router
 from db.database import engine
 from db import models
 from core.rate_limiter import limiter_general
@@ -20,7 +21,7 @@ logger = logging.getLogger("sensai.main")
 # Création des tables dans la base de données
 models.Base.metadata.create_all(bind=engine)
 
-# Migration automatique SQLite pour la colonne audio_path
+# Migration automatique SQLite pour les colonnes audio_path et is_admin
 try:
     with engine.connect() as conn:
         from sqlalchemy import text
@@ -28,6 +29,45 @@ try:
         conn.commit()
 except Exception:
     pass
+
+try:
+    with engine.connect() as conn:
+        from sqlalchemy import text
+        conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0"))
+        conn.commit()
+except Exception:
+    pass
+
+def seed_admin_user():
+    import os
+    from db.database import SessionLocal
+    from core.security import get_password_hash
+    db = SessionLocal()
+    try:
+        admin_email = os.getenv("ADMIN_DEFAULT_EMAIL", "admin@sensai.local")
+        admin_password = os.getenv("ADMIN_DEFAULT_PASSWORD", "AdminSensAI2026!")
+        admin = db.query(models.User).filter(models.User.email == admin_email).first()
+        if not admin:
+            admin = models.User(
+                email=admin_email,
+                hashed_password=get_password_hash(admin_password),
+                is_admin=True,
+                is_premium=True
+            )
+            db.add(admin)
+            db.commit()
+            logger.info("Compte administrateur initial créé : %s", admin_email)
+        elif not admin.is_admin:
+            admin.is_admin = True
+            admin.is_premium = True
+            db.commit()
+            logger.info("Compte existant promu administrateur : %s", admin_email)
+    except Exception as e:
+        logger.warning("Erreur lors de l'initialisation du compte admin : %s", e)
+    finally:
+        db.close()
+
+seed_admin_user()
 
 # Initialisation de l'API avec la dépendance de rate limiting globale
 app = FastAPI(
@@ -75,6 +115,7 @@ app.include_router(cards_router)
 app.include_router(library_router)
 app.include_router(payments_router)
 app.include_router(music_router)
+app.include_router(admin_router)
 
 from db.database import SessionLocal
 from sqlalchemy import text

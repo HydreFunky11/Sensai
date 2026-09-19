@@ -9,7 +9,8 @@ import Profile from './pages/Profile/Profile';
 import Alphabets from './pages/Alphabets/Alphabets';
 import Lens from './pages/Lens/Lens';
 import Music from './pages/Music/Music';
-import ReaderApp from './ReaderApp'; // On renomme l'ancien App.jsx
+import Admin from './pages/Admin/Admin';
+import ReaderApp from './ReaderApp';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -84,6 +85,12 @@ function App() {
         <Route path="/music" element={
           <ProtectedRoute>
             <Music />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/admin" element={
+          <ProtectedRoute>
+            <Admin />
           </ProtectedRoute>
         } />
 
