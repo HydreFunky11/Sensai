@@ -2,14 +2,30 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+function earlyGlobalsPlugin() {
+  return {
+    name: 'sensai-early-globals',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        return html.replace(
+          '<head>',
+          `<head>\n    <script>window.__SERVER_FORWARD_CONSOLE__ = { enabled: false }; var __SERVER_FORWARD_CONSOLE__ = window.__SERVER_FORWARD_CONSOLE__; window.__BUNDLED_DEV__ = false; var __BUNDLED_DEV__ = false;</script>`
+        );
+      },
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), earlyGlobalsPlugin()],
   define: {
     __SERVER_FORWARD_CONSOLE__: JSON.stringify({ enabled: false }),
     __BUNDLED_DEV__: 'false',
   },
   server: {
+    forwardConsole: false,
     allowedHosts: true,
     hmr: {
       clientPort: 443,
