@@ -1,0 +1,164 @@
+/* SensAI Home / Bibliothèque Responsive Styles */
+
+.home-container {
+  min-height: 100vh;
+  background: #121212;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sidebar Dossiers */
+.home-sidebar {
+  width: 260px;
+  background: #18181c;
+  border-right: 1px solid #282832;
+  padding: 20px;
+  overflow-y: auto;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.home-sidebar-title {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.home-folder-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.home-folder-item {
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  background: transparent;
+}
+
+.home-folder-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.home-folder-item.active {
+  background: #2563eb;
+  color: white;
+}
+
+.home-folder-add-section {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Main Library */
+.home-main {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.home-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+  content-visibility: auto;
+}
+
+/* Mobile Responsive Adaptations */
+@media (max-width: 768px) {
+  .home-layout {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .home-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #262632;
+    padding: 12px 16px;
+    background: #14141a;
+  }
+
+  .home-sidebar-title {
+    display: none;
+  }
+
+  .home-folder-list {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .home-folder-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .home-folder-item {
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid #2c2c38;
+    background: #1c1c24;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .home-folder-item.active {
+    background: #2563eb;
+    border-color: #3b82f6;
+  }
+
+  .home-folder-add-section {
+    display: none;
+  }
+
+  .home-main {
+    padding: 16px 12px;
+  }
+
+  .home-toolbar {
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .home-grid {
+    grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+    gap: 12px;
+  }
+}

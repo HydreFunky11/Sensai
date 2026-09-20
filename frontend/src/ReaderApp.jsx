@@ -309,14 +309,7 @@ function ReaderApp() {
         )}
 
         {pages.length > 0 ? (
-          <div
-            style={{
-              display: "flex",
-              height: "calc(100% - 56px)",
-              gap: "0",
-              padding: "0",
-            }}
-          >
+          <div className="reader-workspace">
             <Viewer
               pageSrc={pages[currentIndex]}
               crop={crop}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getLibrary, importToLibrary, getLibraryFolders, createLibraryFolder, renameLibraryFolder, deleteLibraryFolder, moveMangaToFolder, renameManga, deleteManga } from '../../api/client';
 import { Navbar } from '../../components/Navbar/Navbar';
 import { toast } from 'react-hot-toast';
+import './Home.css';
 
 export default function Home() {
   const [library, setLibrary] = useState([]);
@@ -311,7 +312,7 @@ export default function Home() {
   };
 
   return (
-    <div style={styles.container} onClick={closeAllMenus}>
+    <div className="home-container" onClick={closeAllMenus}>
       <Navbar 
         onImportClick={() => fileInputRef.current?.click()} 
         importing={importing} 
@@ -325,16 +326,16 @@ export default function Home() {
             aria-hidden="true"
           />
       
-      <div style={styles.layout}>
+      <div className="home-layout">
         {/* SIDEBAR DOSSIERS */}
-        <aside style={styles.sidebar} aria-label="Liste des dossiers">
-          <h3 style={{ color: '#bdc3c7', marginTop: 0 }}>Dossiers</h3>
-          <ul style={styles.folderList} role="tablist" aria-orientation="vertical">
+        <aside className="home-sidebar" aria-label="Liste des dossiers">
+          <h3 className="home-sidebar-title">Dossiers</h3>
+          <ul className="home-folder-list" role="tablist" aria-orientation="vertical">
             <li 
               role="tab"
               aria-selected={selectedFolderId === null}
               tabIndex="0"
-              style={{...styles.folderItem, background: selectedFolderId === null ? '#34495e' : 'transparent'}}
+              className={`home-folder-item ${selectedFolderId === null ? 'active' : ''}`}
               onClick={() => setSelectedFolderId(null)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedFolderId(null); }}
             >
@@ -346,7 +347,8 @@ export default function Home() {
                 role="tab"
                 aria-selected={selectedFolderId === f.id}
                 tabIndex="0"
-                style={{...styles.folderItem, background: selectedFolderId === f.id ? '#34495e' : 'transparent', position: 'relative'}}
+                className={`home-folder-item ${selectedFolderId === f.id ? 'active' : ''}`}
+                style={{ position: 'relative' }}
                 onClick={() => setSelectedFolderId(f.id)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedFolderId(f.id); }}
               >
@@ -374,7 +376,7 @@ export default function Home() {
             ))}
           </ul>
           
-          <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <div className="home-folder-add-section">
             <input 
               value={newFolderName}
               onChange={e => setNewFolderName(e.target.value)}
@@ -387,8 +389,8 @@ export default function Home() {
         </aside>
 
         {/* MAIN LIBRARY GRID */}
-        <main style={styles.main} aria-label="Contenu de la bibliothèque">
-          <div style={styles.toolbar}>
+        <main className="home-main" aria-label="Contenu de la bibliothèque">
+          <div className="home-toolbar">
              <div style={styles.sortControls}>
                <label htmlFor="sort-select" style={{ color: '#bdc3c7', fontSize: '0.9rem' }}>Trier par :</label>
                <select 
@@ -418,7 +420,7 @@ export default function Home() {
               <p>Cliquez sur "Importer Ici" pour ajouter votre premier manga ou document PDF.</p>
             </div>
           ) : (
-            <div style={styles.grid} role="list">
+            <div className="home-grid" role="list">
               {library.map(manga => (
                 <div 
                   key={manga.id} 

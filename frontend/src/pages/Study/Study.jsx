@@ -1351,8 +1351,8 @@ const styles = {
   },
   decksGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-    gap: "20px",
+    gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+    gap: "16px",
     marginBottom: "40px",
   },
   deckCard: {
@@ -1412,8 +1412,8 @@ const styles = {
   },
   deckActions: {
     display: "grid",
-    gridTemplateColumns: "1.4fr 0.9fr 0.9fr 0.9fr",
-    gap: "6px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(105px, 1fr))",
+    gap: "8px",
     marginTop: "10px",
   },
   btnStudy: {
