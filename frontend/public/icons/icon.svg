@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f19" />
+      <stop offset="50%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f43f5e" />
+      <stop offset="50%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#818cf8" />
+    </linearGradient>
+    <radialGradient id="sunGlow" cx="50%" cy="45%" r="45%">
+      <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.8" />
+      <stop offset="60%" stop-color="#e11d48" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#0b0f19" stop-opacity="0" />
+    </radialGradient>
+    <filter id="neonBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="512" height="512" rx="108" fill="url(#bgGrad)" />
+
+  <!-- Subtle Japanese Sun Aura -->
+  <circle cx="256" cy="240" r="140" fill="url(#sunGlow)" />
+  <circle cx="256" cy="240" r="105" fill="#f43f5e" fill-opacity="0.12" stroke="#f43f5e" stroke-width="2" stroke-opacity="0.3" stroke-dasharray="6 6" />
+
+  <!-- Stylized Torii / AI Sensei Gate -->
+  <!-- Top Roof Bar (Kasagi) with curve -->
+  <path d="M 110 180 Q 256 160 402 180 Q 406 186 396 195 Q 256 178 116 195 Q 106 186 110 180 Z" 
+        fill="url(#accentGrad)" filter="url(#neonBlur)" />
+
+  <!-- Second Bar (Nuki) -->
+  <rect x="140" y="215" width="232" height="14" rx="7" fill="url(#glowGrad)" />
+
+  <!-- Left Column (Hashira) -->
+  <path d="M 175 195 L 165 375 Q 165 382 173 382 Q 181 382 183 375 L 193 195 Z" 
+        fill="url(#accentGrad)" />
+
+  <!-- Right Column (Hashira) -->
+  <path d="M 337 195 L 347 375 Q 347 382 339 382 Q 331 382 329 375 L 319 195 Z" 
+        fill="url(#accentGrad)" />
+
+  <!-- Central AI Core Nexus (Sensei AI Eye / Orb) -->
+  <circle cx="256" cy="275" r="28" fill="#0f172a" stroke="url(#glowGrad)" stroke-width="5" filter="url(#neonBlur)" />
+  <circle cx="256" cy="275" r="14" fill="url(#accentGrad)" />
+  <circle cx="252" cy="271" r="4" fill="#ffffff" />
+
+  <!-- Digital Kanji / Circuit Accent Lines -->
+  <path d="M 220 275 L 195 275" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" />
+  <path d="M 292 275 L 317 275" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" />
+  
+  <path d="M 256 305 L 256 345" stroke="#818cf8" stroke-width="3" stroke-linecap="round" />
+  <circle cx="256" cy="350" r="4" fill="#818cf8" />
+
+  <!-- Stylized Branding text -->
+  <text x="256" y="440" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="44" fill="#ffffff" letter-spacing="4">
+    Sens<tspan fill="#38bdf8">AI</tspan>
+  </text>
+</svg>
