@@ -236,6 +236,46 @@ body, html {
   background: #111113;
 }
 
+.reader-workspace {
+  display: flex;
+  height: calc(100% - 56px);
+  gap: 0;
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .reader-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .reader-sidebar {
+    display: none;
+  }
+
+  .reader-workspace {
+    flex-direction: column !important;
+    height: auto !important;
+  }
+
+  .viewer-section {
+    min-height: 55vh;
+  }
+
+  .viewer-container {
+    margin: 8px;
+    padding: 8px;
+  }
+
+  .analysis-aside, .analysis-placeholder {
+    min-width: 100% !important;
+    max-width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid #1f1f23;
+  }
+}
+
 .analysis-placeholder {
   flex: 1;
   min-width: 320px;
@@ -613,4 +653,19 @@ body, html {
     user-select: auto;
   }
 }
+
+/* Mobile Responsive Overrides */
+@media (max-width: 768px) {
+  body {
+    padding-bottom: calc(65px + var(--sab));
+  }
+}
+
+html, body {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 
