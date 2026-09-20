@@ -130,6 +130,7 @@ export function Viewer({ pageSrc, crop, setCrop, setCompletedCrop, imgRef, onAna
               ref={imgRef}
               src={pageSrc}
               alt="Page du document à analyser"
+              crossOrigin="anonymous"
               className="viewer-manga-img"
               style={{
                 maxHeight: "calc(100vh - 180px)",

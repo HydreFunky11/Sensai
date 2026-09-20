@@ -20,6 +20,7 @@ function ReaderApp() {
     loading: loadingFiles,
     onSelectFiles,
     loadFromFile,
+    loadFromLibraryManga,
   } = useMangaLoader();
   const {
     analysis,
@@ -65,18 +66,9 @@ function ReaderApp() {
   useEffect(() => {
     const manga = location.state?.manga;
     if (manga) {
-      getMangaFileBlob(manga.id)
-        .then((blob) => {
-          const file = new File(
-            [blob],
-            manga.title + (manga.file_path.endsWith(".pdf") ? ".pdf" : ".jpg"),
-            { type: blob.type },
-          );
-          loadFromFile(file);
-        })
-        .catch((err) =>
-          toast.error("Impossible de charger le document: " + err.message),
-        );
+      loadFromLibraryManga(manga).catch((err) =>
+        toast.error("Impossible de charger le document: " + err.message),
+      );
     }
   }, [location.state]);
 
@@ -136,10 +128,10 @@ function ReaderApp() {
         <div className="glass-loader-overlay" role="status" aria-live="polite">
           <div className="glass-loader-spinner"></div>
           <h2 style={{ margin: 0, fontWeight: 700, letterSpacing: "0.5px" }}>
-            Chargement du document...
+            Chargement de {location.state?.manga?.title || "votre document"}...
           </h2>
           <p style={{ opacity: 0.6, fontSize: "0.9rem", marginTop: "8px" }}>
-            Veuillez patienter quelques instants
+            Préparation des pages en cours
           </p>
         </div>
       )}

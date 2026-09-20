@@ -35,6 +35,7 @@ let mockMangaLoader = {
   loading: false,
   onSelectFiles: vi.fn(),
   loadFromFile: vi.fn(),
+  loadFromLibraryManga: vi.fn().mockResolvedValue(),
 };
 
 vi.mock('./hooks/useMangaLoader', () => ({
@@ -68,6 +69,7 @@ describe('Composant ReaderApp', () => {
       loading: false,
       onSelectFiles: vi.fn(),
       loadFromFile: vi.fn(),
+      loadFromLibraryManga: vi.fn().mockResolvedValue(),
     };
   });
 
@@ -81,6 +83,14 @@ describe('Composant ReaderApp', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
+  it('appelle loadFromLibraryManga lors du chargement avec un manga de la bibliothèque', () => {
+    const mangaData = { id: 42, title: 'One Piece Ch. 1', file_path: 'op1.pdf' };
+    mockLocation = { state: { manga: mangaData } };
+
+    render(<ReaderApp />);
+    expect(mockMangaLoader.loadFromLibraryManga).toHaveBeenCalledWith(mangaData);
+  });
+
   it('affiche la barre supérieure avec le bouton retour, le titre et la pagination quand des pages sont chargées', () => {
     mockLocation = { state: { manga: { id: 42, title: 'One Piece Ch. 1', file_path: 'op1.pdf' } } };
     mockMangaLoader = {
@@ -90,6 +100,7 @@ describe('Composant ReaderApp', () => {
       loading: false,
       onSelectFiles: vi.fn(),
       loadFromFile: vi.fn(),
+      loadFromLibraryManga: vi.fn().mockResolvedValue(),
     };
 
     render(<ReaderApp />);

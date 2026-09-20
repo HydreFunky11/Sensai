@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { getMangaPagesInfo, getMangaPageUrl, getMangaFileBlob } from "../api/client";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -49,6 +50,8 @@ export function useMangaLoader() {
 
           const imgUrl = await renderPdfPageToImg(pdf, i);
           if (currentLoadId === lastLoadId.current) onPageReady(imgUrl);
+          // Permet de libérer le thread UI entre le rendu de chaque page
+          await new Promise((r) => setTimeout(r, 10));
         }
       } catch (err) {
         console.error("Erreur PDF:", err);
@@ -60,7 +63,7 @@ export function useMangaLoader() {
   }
 
   async function loadFromFile(file) {
-    const currentId = ++lastLoadId.current; // On incrémente l'ID
+    const currentId = ++lastLoadId.current;
     setLoading(true);
     setPages([]);
     setCurrentIndex(0);
@@ -75,11 +78,58 @@ export function useMangaLoader() {
     );
   }
 
+  async function loadFromLibraryManga(manga) {
+    if (!manga?.id) return;
+    const currentId = ++lastLoadId.current;
+    setLoading(true);
+    setPages([]);
+    setCurrentIndex(0);
+
+    try {
+      // 1. Récupération instantanée du nombre de pages et métadonnées
+      const info = await getMangaPagesInfo(manga.id);
+      if (currentId !== lastLoadId.current) return;
+
+      const total = info.total_pages || 1;
+      const pageUrls = [];
+      for (let i = 1; i <= total; i++) {
+        pageUrls.push(getMangaPageUrl(manga.id, i));
+      }
+
+      setPages(pageUrls);
+    } catch (err) {
+      console.warn("Rendu direct serveur non disponible, repli sur téléchargement complet:", err);
+      try {
+        const blob = await getMangaFileBlob(manga.id);
+        if (currentId !== lastLoadId.current) return;
+        const file = new File(
+          [blob],
+          manga.title + (manga.file_path?.endsWith(".pdf") ? ".pdf" : ".jpg"),
+          { type: blob.type },
+        );
+        await processFile(
+          file,
+          (imgUrl) => {
+            setPages((prev) => [...prev, imgUrl]);
+          },
+          currentId,
+        );
+      } catch (fallbackErr) {
+        console.error("Erreur chargement document bibliothèque:", fallbackErr);
+        throw fallbackErr;
+      }
+    } finally {
+      if (currentId === lastLoadId.current) {
+        setLoading(false);
+      }
+    }
+  }
+
   async function onSelectFiles(e) {
     if (!e.target.files || e.target.files.length === 0) return;
     const currentId = ++lastLoadId.current;
     setLoading(true);
-    setPages([]); // On vide pour repartir sur une nouvelle sélection
+    setPages([]);
 
     const files = Array.from(e.target.files);
     for (const file of files) {
@@ -102,5 +152,6 @@ export function useMangaLoader() {
     loading,
     onSelectFiles,
     loadFromFile,
+    loadFromLibraryManga,
   };
 }
