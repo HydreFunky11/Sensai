@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getMe, createCheckoutSession } from '../../api/client';
 import { toast } from 'react-hot-toast';
+import { promptInstall, isInstallPromptAvailable, isStandaloneMode } from '../../pwa';
 
 export function Navbar({ onImportClick, importing }) {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export function Navbar({ onImportClick, importing }) {
   const [isPremium, setIsPremium] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
+  const [canInstall, setCanInstall] = useState(false);
 
   useEffect(() => {
     async function checkUserStatus() {
@@ -23,6 +25,38 @@ export function Navbar({ onImportClick, importing }) {
     }
     checkUserStatus();
   }, [currentPath]);
+
+  useEffect(() => {
+    const handleInstallable = () => {
+      if (!isStandaloneMode()) {
+        setCanInstall(true);
+      }
+    };
+    const handleInstalled = () => {
+      setCanInstall(false);
+      toast.success("SensAI installé avec succès !");
+    };
+
+    window.addEventListener('pwa-installable', handleInstallable);
+    window.addEventListener('pwa-installed', handleInstalled);
+
+    if (isInstallPromptAvailable() && !isStandaloneMode()) {
+      setCanInstall(true);
+    }
+
+    return () => {
+      window.removeEventListener('pwa-installable', handleInstallable);
+      window.removeEventListener('pwa-installed', handleInstalled);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    const installed = await promptInstall();
+    if (installed) {
+      setCanInstall(false);
+      toast.success("SensAI installé avec succès !");
+    }
+  };
 
   const handleSubscribe = async () => {
     setSubscribing(true);
@@ -171,6 +205,23 @@ export function Navbar({ onImportClick, importing }) {
             }}
           >
             {subscribing ? '⏳...' : '👑 S\'abonner'}
+          </button>
+        )}
+
+        {/* PWA Install Button */}
+        {canInstall && (
+          <button 
+            onClick={handleInstallApp}
+            aria-label="Installer l'application SensAI"
+            style={{
+              ...styles.navBtn, 
+              background: 'linear-gradient(135deg, #06b6d4, #2563eb)', 
+              border: 'none', 
+              color: 'white',
+              boxShadow: '0 2px 8px rgba(6, 182, 212, 0.3)'
+            }}
+          >
+            📲 Installer l'App
           </button>
         )}
 

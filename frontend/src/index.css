@@ -586,3 +586,31 @@ body, html {
   border-color: #8b5cf6 !important;
   box-shadow: 0 0 25px rgba(139, 92, 246, 0.3) !important;
 }
+
+/* ========================================== */
+/*   PWA & MOBILE STANDALONE SUPPORT          */
+/* ========================================== */
+
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+@media all and (display-mode: standalone) {
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    padding-top: var(--sat);
+    padding-bottom: var(--sab);
+    padding-left: var(--sal);
+    padding-right: var(--sar);
+  }
+
+  input, textarea, [contenteditable="true"] {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+}
+
