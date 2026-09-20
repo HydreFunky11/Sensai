@@ -475,8 +475,21 @@ export async function deleteManga(mangaId) {
 
 export function getMangaFileUrl(mangaId) {
   const token = localStorage.getItem("token");
-  return `${BASE_URL}/library/${mangaId}/file?token=${token}`; // Assuming token can be passed in URL, but usually it's in headers.
-  // For images or pdfs loaded by browser, passing token in URL is easier. We need to update backend to accept token from query if we use it directly in <img> or PDF.js
+  return `${BASE_URL}/library/${mangaId}/file?token=${token}`;
+}
+
+export async function getMangaPagesInfo(mangaId) {
+  const response = await fetch(`${BASE_URL}/library/${mangaId}/pages-info`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error("Erreur récupération informations manga");
+  return response.json();
+}
+
+export function getMangaPageUrl(mangaId, pageNumber) {
+  const token = localStorage.getItem("token");
+  const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
+  return `${BASE_URL}/library/${mangaId}/pages/${pageNumber}${tokenQuery}`;
 }
 
 export async function getMangaFileBlob(mangaId) {

@@ -136,3 +136,69 @@ def test_import_oversized_file(client, monkeypatch):
     assert response.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
     assert "dépasse la taille maximale autorisée" in response.json()["detail"]
 
+
+def test_get_manga_pages_info_and_rendering(client):
+    headers = get_auth_headers(client, "pages_pdf@example.com")
+    pdf_bytes = create_mock_pdf(3)
+    
+    # 1. Import du PDF
+    import_resp = client.post(
+        "/library/import",
+        files={"file": ("tome_test.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
+        data={"title": "Tome Test PDF"},
+        headers=headers
+    )
+    assert import_resp.status_code == status.HTTP_200_OK
+    manga_id = import_resp.json()["id"]
+
+    # 2. Récupération des infos de pages (pages-info)
+    info_resp = client.get(f"/library/{manga_id}/pages-info", headers=headers)
+    assert info_resp.status_code == status.HTTP_200_OK
+    info_data = info_resp.json()
+    assert info_data["manga_id"] == manga_id
+    assert info_data["total_pages"] == 3
+    assert info_data["is_pdf"] is True
+
+    # 3. Rendu de la page 1 avec Bearer auth
+    page1_resp = client.get(f"/library/{manga_id}/pages/1", headers=headers)
+    assert page1_resp.status_code == status.HTTP_200_OK
+    assert page1_resp.headers["content-type"].startswith("image/")
+
+    # 4. Rendu de la page 2 avec authentification via query parameter ?token=
+    raw_token = headers["Authorization"].split(" ")[1]
+    page2_resp = client.get(f"/library/{manga_id}/pages/2?token={raw_token}")
+    assert page2_resp.status_code == status.HTTP_200_OK
+
+    # 5. Page hors limites -> 404
+    page_invalid = client.get(f"/library/{manga_id}/pages/99", headers=headers)
+    assert page_invalid.status_code == status.HTTP_404_NOT_FOUND
+
+    # 6. Suppression du manga et vérification du nettoyage
+    del_resp = client.delete(f"/library/{manga_id}", headers=headers)
+    assert del_resp.status_code == status.HTTP_200_OK
+
+
+def test_get_manga_pages_info_for_image(client):
+    headers = get_auth_headers(client, "pages_img@example.com")
+    img_data = create_mock_png()
+    
+    import_resp = client.post(
+        "/library/import",
+        files={"file": ("solo_page.png", io.BytesIO(img_data), "image/png")},
+        headers=headers
+    )
+    assert import_resp.status_code == status.HTTP_200_OK
+    manga_id = import_resp.json()["id"]
+
+    info_resp = client.get(f"/library/{manga_id}/pages-info", headers=headers)
+    assert info_resp.status_code == status.HTTP_200_OK
+    info_data = info_resp.json()
+    assert info_data["total_pages"] == 1
+    assert info_data["is_pdf"] is False
+
+    page1_resp = client.get(f"/library/{manga_id}/pages/1", headers=headers)
+    assert page1_resp.status_code == status.HTTP_200_OK
+
+    page2_resp = client.get(f"/library/{manga_id}/pages/2", headers=headers)
+    assert page2_resp.status_code == status.HTTP_404_NOT_FOUND
+

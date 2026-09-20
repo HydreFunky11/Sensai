@@ -33,7 +33,9 @@ export function Sidebar({ pages, currentIndex, onSelectFiles, onPageChange }) {
             >
               <img
                 src={pageSrc}
-                alt="" // Alt vide car l'aria-label du li décrit déjà l'action
+                alt=""
+                loading="lazy"
+                crossOrigin="anonymous"
                 aria-hidden="true"
                 className="reader-sidebar-thumb"
               />

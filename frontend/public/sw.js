@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sensai-cache-v1';
+const CACHE_NAME = 'sensai-cache-v2';
 
 const STATIC_ASSETS = [
   '/',
@@ -50,18 +50,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Ne pas intercepter les appels API backend ou les flux externes (ex: Spotify)
-  const isApiRequest = url.pathname.startsWith('/auth') ||
-                       url.pathname.startsWith('/library') ||
-                       url.pathname.startsWith('/cards') ||
-                       url.pathname.startsWith('/ocr') ||
-                       url.pathname.startsWith('/llm') ||
-                       url.pathname.startsWith('/music') ||
-                       url.pathname.startsWith('/admin') ||
-                       url.pathname.startsWith('/subscription') ||
-                       url.port === '8000';
+  // Ne pas intercepter les requêtes WebSocket, les flux de dev Vite, ni les appels API
+  const isExcluded = 
+    url.pathname.startsWith('/@') ||
+    url.pathname.includes('__vite') ||
+    url.pathname.includes('node_modules') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/auth') ||
+    url.pathname.startsWith('/library') ||
+    url.pathname.startsWith('/cards') ||
+    url.pathname.startsWith('/analyze') ||
+    url.pathname.startsWith('/detect') ||
+    url.pathname.startsWith('/translate') ||
+    url.pathname.startsWith('/tts') ||
+    url.pathname.startsWith('/music') ||
+    url.pathname.startsWith('/admin') ||
+    url.pathname.startsWith('/payments') ||
+    url.pathname.startsWith('/health') ||
+    url.pathname.startsWith('/subscription') ||
+    url.port === '8000' ||
+    url.origin !== self.location.origin;
 
-  if (isApiRequest || url.origin !== self.location.origin) {
+  if (isExcluded) {
     return;
   }
 
@@ -77,11 +87,18 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        // En cas de perte de connexion pour une page HTML, servir le fallback index.html
-        if (event.request.headers.get('accept')?.includes('text/html')) {
-          return caches.match('/index.html') || cachedResponse;
+        // 1. Si nous avons une réponse en cache, la retourner
+        if (cachedResponse) {
+          return cachedResponse;
         }
-        return cachedResponse;
+        // 2. En cas de perte de connexion pour une navigation HTML, servir le fallback index.html
+        if (event.request.headers.get('accept')?.includes('text/html')) {
+          return caches.match('/index.html').then((fallback) => {
+            return fallback || Response.error();
+          });
+        }
+        // 3. IMPORTANT : Ne jamais renvoyer undefined dans respondWith, sinon TypeError: Failed to convert value to 'Response'
+        return Response.error();
       });
 
       return cachedResponse || fetchPromise;

@@ -257,6 +257,87 @@ def get_manga_file(manga_id: int, db: Session = Depends(get_db), current_user: m
         
     return FileResponse(manga.file_path)
 
+@router.get("/{manga_id}/pages-info")
+def get_manga_pages_info(manga_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    manga = db.query(models.Manga).filter(models.Manga.id == manga_id, models.Manga.user_id == current_user.id).first()
+    if not manga:
+        raise HTTPException(status_code=404, detail="Manga not found")
+    
+    if not manga.file_path or not os.path.exists(manga.file_path):
+        raise HTTPException(status_code=404, detail="File not found on server")
+        
+    ext = manga.file_path.split('.')[-1].lower() if '.' in manga.file_path else ''
+    is_pdf = ext == "pdf"
+    total_pages = 1
+    if is_pdf:
+        try:
+            doc = fitz.open(manga.file_path)
+            total_pages = len(doc)
+            doc.close()
+        except Exception as e:
+            logger.error("Erreur lecture PDF pages info pour manga %d: %s", manga_id, e)
+            total_pages = 1
+            
+    return {
+        "manga_id": manga.id,
+        "title": manga.title,
+        "total_pages": total_pages,
+        "is_pdf": is_pdf
+    }
+
+@router.get("/{manga_id}/pages/{page_number}")
+def get_manga_page_image(
+    manga_id: int,
+    page_number: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    manga = db.query(models.Manga).filter(models.Manga.id == manga_id, models.Manga.user_id == current_user.id).first()
+    if not manga:
+        raise HTTPException(status_code=404, detail="Manga not found")
+    
+    if not manga.file_path or not os.path.exists(manga.file_path):
+        raise HTTPException(status_code=404, detail="File not found on server")
+        
+    ext = manga.file_path.split('.')[-1].lower() if '.' in manga.file_path else ''
+    
+    # Document image simple (non-PDF)
+    if ext != "pdf":
+        if page_number != 1:
+            raise HTTPException(status_code=404, detail="Page non trouvée (document image unique)")
+        return FileResponse(
+            manga.file_path,
+            headers={"Cache-Control": "public, max-age=86400"}
+        )
+
+    # Document PDF : rendu et mise en cache disque
+    cache_dir = os.path.join(UPLOAD_DIR, "page_cache", str(manga_id))
+    os.makedirs(cache_dir, exist_ok=True)
+    cached_page_path = os.path.join(cache_dir, f"{page_number}.jpg")
+    
+    if not os.path.exists(cached_page_path):
+        try:
+            doc = fitz.open(manga.file_path)
+            total = len(doc)
+            if page_number < 1 or page_number > total:
+                doc.close()
+                raise HTTPException(status_code=404, detail=f"Numéro de page {page_number} invalide (total: {total})")
+            page = doc.load_page(page_number - 1)
+            pix = page.get_pixmap(dpi=150)
+            pix.save(cached_page_path)
+            doc.close()
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Erreur rendu page PDF %d pour manga %d: %s", page_number, manga_id, e)
+            raise HTTPException(status_code=500, detail="Erreur lors de la génération de la page")
+            
+    return FileResponse(
+        cached_page_path,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=86400"}
+    )
+
 @router.put("/{manga_id}/rename", response_model=MangaResponse)
 def rename_manga(manga_id: int, rename_data: MangaRename, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     manga = db.query(models.Manga).filter(models.Manga.id == manga_id, models.Manga.user_id == current_user.id).first()
@@ -280,6 +361,14 @@ def delete_manga(manga_id: int, db: Session = Depends(get_db), current_user: mod
             os.remove(manga.file_path)
         except Exception as e:
             print(f"Erreur lors de la suppression du fichier physique : {e}")
+
+    # Supprimer le cache de pages si existant
+    cache_dir = os.path.join(UPLOAD_DIR, "page_cache", str(manga_id))
+    if os.path.exists(cache_dir):
+        try:
+            shutil.rmtree(cache_dir)
+        except Exception as e:
+            print(f"Erreur suppression cache pages manga {manga_id}: {e}")
 
     db.delete(manga)
     db.commit()
