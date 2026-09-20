@@ -51,19 +51,34 @@ class LLMService:
             raise ValueError("Texte de réponse vide reçu du modèle.")
 
         content = raw_text.strip()
-        # 1. Nettoyage des balises Markdown (ex: ```json ... ``` ou ``` ... ```)
+        # 1. Nettoyage des balises de pensée / reasoning de certains modèles (ex: Minimax, DeepSeek)
+        content = re.sub(r"<thinking>[\s\S]*?</thinking>", "", content, flags=re.IGNORECASE)
+        content = re.sub(r"<thought>[\s\S]*?</thought>", "", content, flags=re.IGNORECASE)
+        content = re.sub(r"\]<\]minimax\[>\[[\s\S]*?\]<\]minimax\[>\[", "", content)
+        content = re.sub(r"\[<thinking>[\s\S]*?</thinking>\]", "", content, flags=re.IGNORECASE)
+        content = content.strip()
+
+        # 2. Nettoyage des balises Markdown (ex: ```json ... ``` ou ``` ... ```)
         if "```" in content:
             match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
             if match:
                 content = match.group(1).strip()
 
-        # 2. Extraction ciblée du premier objet JSON complet si texte parasite
+        # 3. Extraction ciblée du premier objet JSON complet si texte parasite
         if not (content.startswith("{") and content.endswith("}")):
-            match = re.search(r"(\{[\s\S]*\})", content)
+            match = re.search(r"(\{[\s\S]*\"translation\"[\s\S]*\})", content)
             if match:
                 content = match.group(1).strip()
+            else:
+                match = re.search(r"(\{[\s\S]*\})", content)
+                if match:
+                    content = match.group(1).strip()
 
         data = json.loads(content)
+
+        # Vérifier impérativement la présence d'une traduction exploitable
+        if not data.get("translation") or not isinstance(data.get("translation"), str) or not data.get("translation").strip():
+            raise ValueError(f"Payload JSON incomplet (clé 'translation' absente ou vide) : {data}")
 
         # Normaliser les éléments de breakdown pour assurer la présence de 'romanji' et 'romaji'
         if "breakdown" in data and isinstance(data["breakdown"], list):
