@@ -25,6 +25,19 @@ export function registerServiceWorker() {
     return;
   }
 
+  // En environnement de développement (Vite / tunnels dev hors tests), ne pas activer le Service Worker
+  // et désinscrire tout worker existant afin de ne pas perturber Vite HMR ni intercepter les requêtes.
+  if (import.meta.env.DEV && import.meta.env.MODE !== 'test') {
+    if (typeof navigator.serviceWorker.getRegistrations === 'function') {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      }).catch(() => {});
+    }
+    return;
+  }
+
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')

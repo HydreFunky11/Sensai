@@ -94,11 +94,11 @@ self.addEventListener('fetch', (event) => {
         // 2. En cas de perte de connexion pour une navigation HTML, servir le fallback index.html
         if (event.request.headers.get('accept')?.includes('text/html')) {
           return caches.match('/index.html').then((fallback) => {
-            return fallback || Response.error();
+            return fallback || new Response('Hors ligne', { status: 503, headers: { 'Content-Type': 'text/plain' } });
           });
         }
-        // 3. IMPORTANT : Ne jamais renvoyer undefined dans respondWith, sinon TypeError: Failed to convert value to 'Response'
-        return Response.error();
+        // 3. IMPORTANT : Renvoyer un objet Response valide et universel pour éviter TypeError: Failed to convert value to 'Response'
+        return new Response('Network error', { status: 408, headers: { 'Content-Type': 'text/plain' } });
       });
 
       return cachedResponse || fetchPromise;
