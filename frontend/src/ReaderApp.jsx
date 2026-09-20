@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMangaLoader } from "./hooks/useMangaLoader";
 import { useTranslation } from "./hooks/useTranslation";
@@ -154,33 +154,26 @@ function ReaderApp() {
       <main className="reader-main">
         {/* Barre de contrôle supérieure (Pagination & Infos & Eye Tracking) */}
         {pages.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "12px 24px",
-              background: "#111113",
-              borderBottom: "1px solid #1f1f23",
-              zIndex: 10,
-              height: "56px",
-              boxSizing: "border-box",
-            }}
-          >
-            <h2
-              style={{
-                fontSize: "0.95rem",
-                margin: 0,
-                fontWeight: 600,
-                color: "#94a3b8",
-              }}
-            >
-              📖 {location.state?.manga?.title || "Fichier importé"}
-            </h2>
+          <div className="reader-topbar">
+            <div className="reader-topbar-left">
+              <button
+                onClick={() => navigate("/")}
+                className="reader-back-nav-btn"
+                title="Retour à la bibliothèque"
+                aria-label="Retour à la bibliothèque"
+              >
+                <span className="reader-back-icon">←</span>
+                <span className="reader-back-text">Retour</span>
+              </button>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+              <h2 className="reader-doc-title">
+                📖 {location.state?.manga?.title || "Fichier importé"}
+              </h2>
+            </div>
+
+            <div className="reader-topbar-right">
               {/* Contrôles Eye Tracking WIP */}
-              <div style={{ display: "flex", gap: "10px" }}>
+              <div className="reader-eyetracking-controls">
                 <button
                   onClick={() => {
                     if (!eyeTrackingActive) {
@@ -191,18 +184,11 @@ function ReaderApp() {
                       setIsCalibrating(false);
                     }
                   }}
+                  className="reader-eyetracking-btn"
                   style={{
-                    padding: "6px 14px",
-                    borderRadius: "20px",
                     background: eyeTrackingActive
                       ? "#10b981"
                       : "rgba(255,255,255,0.08)",
-                    color: "white",
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    fontSize: "0.75rem",
-                    transition: "all 0.2s",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
                     border:
                       "1px solid " +
                       (eyeTrackingActive ? "#10b981" : "#3f3f46"),
@@ -215,18 +201,7 @@ function ReaderApp() {
                 {eyeTrackingActive && !isCalibrating && (
                   <button
                     onClick={() => setIsCalibrating(true)}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "20px",
-                      border: "none",
-                      background: "#3b82f6",
-                      color: "white",
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                      fontSize: "0.75rem",
-                      transition: "all 0.2s",
-                      boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-                    }}
+                    className="reader-recalibrate-btn"
                   >
                     Recalibrer
                   </button>
@@ -234,74 +209,32 @@ function ReaderApp() {
               </div>
 
               {/* Séparateur vertical */}
-              <div
-                style={{ width: "1px", height: "20px", background: "#27272a" }}
-              />
+              <div className="reader-separator" />
 
               {/* Pagination */}
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "15px" }}
-              >
+              <div className="reader-pagination-controls">
                 <button
                   onClick={handlePrevPage}
                   disabled={currentIndex === 0}
-                  style={{
-                    background:
-                      currentIndex === 0
-                        ? "rgba(255,255,255,0.02)"
-                        : "rgba(255,255,255,0.05)",
-                    color: currentIndex === 0 ? "#4b5563" : "#f8fafc",
-                    border:
-                      "1px solid " +
-                      (currentIndex === 0 ? "#27272a" : "#3f3f46"),
-                    borderRadius: "6px",
-                    padding: "6px 12px",
-                    cursor: currentIndex === 0 ? "not-allowed" : "pointer",
-                    fontWeight: 600,
-                    fontSize: "0.85rem",
-                    transition: "all 0.2s",
-                  }}
+                  className="reader-page-nav-btn"
+                  aria-label="Page précédente"
                 >
-                  Page précédente
+                  <span className="reader-nav-full-label">Page précédente</span>
+                  <span className="reader-nav-short-label">◀</span>
                 </button>
 
-                <span
-                  style={{
-                    fontSize: "0.9rem",
-                    fontWeight: 700,
-                    color: "#f1f5f9",
-                  }}
-                >
+                <span className="reader-page-counter">
                   {currentIndex + 1} / {pages.length}
                 </span>
 
                 <button
                   onClick={handleNextPage}
                   disabled={currentIndex === pages.length - 1}
-                  style={{
-                    background:
-                      currentIndex === pages.length - 1
-                        ? "rgba(255,255,255,0.02)"
-                        : "rgba(255,255,255,0.05)",
-                    color:
-                      currentIndex === pages.length - 1 ? "#4b5563" : "#f8fafc",
-                    border:
-                      "1px solid " +
-                      (currentIndex === pages.length - 1
-                        ? "#27272a"
-                        : "#3f3f46"),
-                    borderRadius: "6px",
-                    padding: "6px 12px",
-                    cursor:
-                      currentIndex === pages.length - 1
-                        ? "not-allowed"
-                        : "pointer",
-                    fontWeight: 600,
-                    fontSize: "0.85rem",
-                    transition: "all 0.2s",
-                  }}
+                  className="reader-page-nav-btn"
+                  aria-label="Page suivante"
                 >
-                  Page suivante
+                  <span className="reader-nav-full-label">Page suivante</span>
+                  <span className="reader-nav-short-label">▶</span>
                 </button>
               </div>
             </div>
@@ -363,7 +296,7 @@ function ReaderApp() {
             <p
               style={{
                 maxWidth: "400px",
-                margin: 0,
+                margin: "0 0 20px 0",
                 fontSize: "1rem",
                 lineHeight: "1.5",
               }}
@@ -371,6 +304,12 @@ function ReaderApp() {
               Ouvrez un document depuis la bibliothèque ou importez-en un avec
               le panneau de gauche
             </p>
+            <button
+              onClick={() => navigate("/")}
+              className="reader-empty-back-btn"
+            >
+              ← Retour à la bibliothèque
+            </button>
           </div>
         )}
       </main>

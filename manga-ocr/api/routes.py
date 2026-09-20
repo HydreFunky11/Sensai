@@ -24,9 +24,10 @@ def is_valid_analysis_cache(data) -> bool:
         return False
     if data.get("error"):
         return False
-    if data.get("translation") in ["Erreur de traduction"]:
+    trans = data.get("translation")
+    if not trans or not isinstance(trans, str) or trans.strip() in ["", "Erreur de traduction", "Aucun texte détecté"]:
         return False
-    return True
+    return bool(data.get("original"))
 
 def cleanup_old_cache(db: Session):
     try:

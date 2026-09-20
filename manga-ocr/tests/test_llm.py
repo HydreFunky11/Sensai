@@ -131,3 +131,50 @@ def test_safe_error_dict_when_both_fail():
         assert res["original"] == "テスト"
         assert res["translation"] == "Erreur de traduction"
         assert "error" in res
+
+
+def test_normalize_with_thinking_tags():
+    service = LLMService()
+    raw = """<thinking>
+    Analyzing Japanese text 勝つさ.
+    {"some_scratchpad": true}
+    </thinking>
+    ```json
+    {
+        "original": "勝つさ",
+        "romaji": "katsu sa",
+        "translation": "Je vais gagner",
+        "breakdown": [
+            {"word": "勝つ", "romaji": "katsu", "type": "Verbe", "meaning": "Gagner"}
+        ]
+    }
+    ```"""
+    result = service._normalize_json_payload(raw, "勝つさ")
+    assert result["original"] == "勝つさ"
+    assert result["translation"] == "Je vais gagner"
+    assert len(result["breakdown"]) == 1
+
+
+def test_normalize_missing_translation_raises():
+    service = LLMService()
+    raw = """```json
+    {
+        "original": "勝つさ",
+        "romaji": "katsu sa"
+    }
+    ```"""
+    with pytest.raises(ValueError, match="clé 'translation' absente ou vide"):
+        service._normalize_json_payload(raw, "勝つさ")
+
+
+def test_is_valid_analysis_cache():
+    from api.routes import is_valid_analysis_cache
+    assert is_valid_analysis_cache(None) is False
+    assert is_valid_analysis_cache({}) is False
+    assert is_valid_analysis_cache({"error": "foo", "translation": "bar", "original": "baz"}) is False
+    assert is_valid_analysis_cache({"original": "baz", "translation": "Erreur de traduction"}) is False
+    assert is_valid_analysis_cache({"original": "baz", "translation": "Aucun texte détecté"}) is False
+    assert is_valid_analysis_cache({"original": "baz", "translation": ""}) is False
+    assert is_valid_analysis_cache({"original": "baz", "translation": "   "}) is False
+    assert is_valid_analysis_cache({"translation": "Valide"}) is False  # missing original
+    assert is_valid_analysis_cache({"original": "勝つさ", "translation": "Je vais gagner"}) is True
